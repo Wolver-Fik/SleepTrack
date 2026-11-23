@@ -4,6 +4,8 @@
 
 [English](#english) · [Español](#español)
 
+---
+
 ## English
 
 A private, offline-first sleep log that runs entirely in your browser. No account, no server, no tracking: your nights stay on your device unless you export them yourself.
