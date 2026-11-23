@@ -4,7 +4,7 @@
 (function(){
 'use strict';
 
-var VERSION='sleeptrack-v2';
+var VERSION='sleeptrack-v3';
 var SCOPE=self.registration.scope;
 function abs(p){return new URL(p,SCOPE).href;}
 var INDEX=abs('./index.html');
@@ -14,7 +14,7 @@ var CORE=[
   './js/i18n/pt.js','./js/i18n/fr.js','./js/i18n/it.js',
   './js/i18n/de.js','./js/i18n/ru.js','./js/i18n/ja.js',
   './js/storage.js','./js/app.js',
-  './icons/icon-180.png','./icons/icon-192.png','./icons/icon-512.png'
+  './icons/icon.svg','./icons/icon-180.png','./icons/icon-192.png','./icons/icon-512.png'
 ].map(abs);
 
 self.addEventListener('install',function(ev){

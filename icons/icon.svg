@@ -1,41 +1,24 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="SleepTrack">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="SleepTrack">
   <defs>
-    <radialGradient id="glow" cx="50%" cy="42%" r="55%">
-      <stop offset="0%" stop-color="#818CF8" stop-opacity=".30"/>
-      <stop offset="60%" stop-color="#818CF8" stop-opacity=".08"/>
-      <stop offset="100%" stop-color="#818CF8" stop-opacity="0"/>
+    <linearGradient id="stMark" x1="12" y1="10" x2="52" y2="56" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#818CF8"/>
+      <stop offset="1" stop-color="#38BDF8"/>
+    </linearGradient>
+    <radialGradient id="stGlow" cx="44%" cy="42%" r="58%">
+      <stop stop-color="#818CF8" stop-opacity=".28"/>
+      <stop offset="1" stop-color="#818CF8" stop-opacity="0"/>
     </radialGradient>
-    <linearGradient id="moon" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#A5B4FC"/>
-      <stop offset="100%" stop-color="#818CF8"/>
-    </linearGradient>
-    <linearGradient id="wave" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#818CF8" stop-opacity=".15"/>
-      <stop offset="50%" stop-color="#38BDF8" stop-opacity=".95"/>
-      <stop offset="100%" stop-color="#818CF8" stop-opacity=".15"/>
-    </linearGradient>
-    <mask id="crescent">
-      <rect width="512" height="512" fill="#fff"/>
-      <circle cx="292" cy="188" r="106" fill="#000"/>
+    <mask id="stMarkCut">
+      <rect width="64" height="64" fill="#fff"/>
+      <circle cx="40" cy="20" r="17" fill="#000"/>
     </mask>
   </defs>
-
-  <rect width="512" height="512" rx="104" fill="#0B0F1A"/>
-  <circle cx="246" cy="238" r="215" fill="url(#glow)"/>
-
-  <circle cx="228" cy="238" r="122" fill="url(#moon)" mask="url(#crescent)"/>
-
-  <g fill="#38BDF8">
-    <circle cx="352" cy="132" r="6" opacity=".95"/>
-    <circle cx="398" cy="214" r="4" opacity=".75"/>
-    <circle cx="124" cy="128" r="4" opacity=".70"/>
-    <path d="M370 86c2.6 0 4.7 2.1 4.7 4.7 0 8.6 3.2 12 12 12 0 2.6-2.1 4.7-4.7 4.7-8.8 0-12 3.4-12 12 0 2.6-2.1 4.7-4.7 4.7-2.6 0-4.7-2.1-4.7-4.7 0-8.6-3.2-12-12-12 0-2.6 2.1-4.7 4.7-4.7 8.8 0 12-3.4 12-12 0-2.6 2.1-4.7 4.7-4.7z" opacity=".95"/>
-    <path d="M158 238c1.8 0 3.2 1.4 3.2 3.2 0 5.9 2.2 8.2 8.2 8.2 0 1.8-1.4 3.2-3.2 3.2-6 0-8.2 2.3-8.2 8.2 0 1.8-1.4 3.2-3.2 3.2-1.8 0-3.2-1.4-3.2-3.2 0-5.9-2.2-8.2-8.2-8.2 0-1.8 1.4-3.2 3.2-3.2 6 0 8.2-2.3 8.2-8.2 0-1.8 1.4-3.2 3.2-3.2z" opacity=".65"/>
-  </g>
-
-  <g fill="none" stroke="url(#wave)" stroke-linecap="round">
-    <path d="M28 372c52-34 100-34 152 0s100 34 152 0 100-34 152 0" stroke-width="9" opacity=".55"/>
-    <path d="M28 412c52-34 100-34 152 0s100 34 152 0 100-34 152 0" stroke-width="11" opacity=".85"/>
-    <path d="M28 452c52-34 100-34 152 0s100 34 152 0 100-34 152 0" stroke-width="7" opacity=".40"/>
-  </g>
+  <rect width="64" height="64" rx="14" fill="#0B0F1A"/>
+  <rect x=".5" y=".5" width="63" height="63" rx="13.5" fill="none" stroke="#818CF8" stroke-opacity=".35"/>
+  <circle cx="32" cy="30" r="30" fill="url(#stGlow)"/>
+  <circle cx="29" cy="30" r="20" fill="url(#stMark)" mask="url(#stMarkCut)"/>
+  <path d="M50 8L51.6 12.4L56 14L51.6 15.6L50 20L48.4 15.6L44 14L48.4 12.4Z" fill="url(#stMark)"/>
+  <circle cx="51" cy="27" r="1.6" fill="#38BDF8" opacity=".85"/>
+  <path d="M8 48C13 43 18 43 23 48S33 53 38 48S48 43 56 48" fill="none" stroke="url(#stMark)" stroke-width="3" stroke-linecap="round" opacity=".75"/>
+  <path d="M8 55C13 50 18 50 23 55S33 60 38 55S48 50 56 55" fill="none" stroke="url(#stMark)" stroke-width="3" stroke-linecap="round" opacity=".45"/>
 </svg>

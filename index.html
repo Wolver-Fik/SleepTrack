@@ -10,6 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>SleepTrack</title>
 <link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
 <link rel="apple-touch-icon" href="./icons/icon-180.png">
 <link rel="icon" type="image/png" href="./icons/icon-192.png">
 <link rel="stylesheet" href="./css/styles.css">
@@ -18,9 +19,24 @@
 <div class="wrap">
   <header class="top">
     <div class="brand">
-      <p class="eyebrow" id="today"></p>
-      <h1>SleepTrack</h1>
-      <p class="subtitle" data-i18n="header.subtitle">REGISTRO · PATRONES · DESCANSO</p>
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="stMark" x1="12" y1="10" x2="52" y2="56" gradientUnits="userSpaceOnUse"><stop stop-color="#818CF8"/><stop offset="1" stop-color="#38BDF8"/></linearGradient>
+            <mask id="stMarkCut"><rect width="64" height="64" fill="#fff"/><circle cx="40" cy="20" r="17" fill="#000"/></mask>
+          </defs>
+          <circle cx="29" cy="30" r="20" fill="url(#stMark)" mask="url(#stMarkCut)"/>
+          <path d="M50 8L51.6 12.4L56 14L51.6 15.6L50 20L48.4 15.6L44 14L48.4 12.4Z" fill="url(#stMark)"/>
+          <circle cx="51" cy="27" r="1.6" fill="#38BDF8" opacity=".85"/>
+          <path d="M8 48C13 43 18 43 23 48S33 53 38 48S48 43 56 48" stroke="url(#stMark)" stroke-width="3" stroke-linecap="round" opacity=".75"/>
+          <path d="M8 55C13 50 18 50 23 55S33 60 38 55S48 50 56 55" stroke="url(#stMark)" stroke-width="3" stroke-linecap="round" opacity=".45"/>
+        </svg>
+      </span>
+      <div class="brand-copy">
+        <p class="eyebrow" id="today"></p>
+        <h1 class="wordmark">Sleep<strong>Track</strong></h1>
+        <p class="subtitle" data-i18n="header.subtitle">REGISTRO · PATRONES · DESCANSO</p>
+      </div>
     </div>
     <div class="top-actions">
       <div class="lang">
