@@ -10,6 +10,8 @@
 
 A private, offline-first sleep log that runs entirely in your browser. No account, no server, no tracking: your nights stay on your device unless you export them yourself.
 
+---
+
 ### Features
 
 - **Log & Summary** — record bedtime, wake-up time, quality (1–5), awakenings, factors (late caffeine, screens, exercise, stress, alcohol, heavy dinner, nap, noise/heat plus your own) and free-text notes. Live duration feedback and six KPIs: 7- and 30-day averages, quality, awakenings, sleep debt and regularity.
@@ -19,6 +21,8 @@ A private, offline-first sleep log that runs entirely in your browser. No accoun
 - **Installable PWA** — web manifest, relative paths for GitHub Pages project sites, standalone display, Network-First service worker for HTML, offline caching for assets and automatic reload when a new version takes control.
 - **iOS/Android ready** — `viewport-fit=cover`, safe-area insets on the header, body and dialogs, `100dvh` layout, real PNG icons (180/192/512) plus an SVG source.
 - **Built-in example data** on first launch so the dashboard is not empty; it disappears as soon as you save your first night.
+
+---
 
 ### Privacy & license
 
@@ -32,6 +36,8 @@ Licensed under the **PolyForm Noncommercial License 1.0.0** — see [LICENSE](LI
 
 Un diario de sueño privado, que funciona sin conexión y corre completamente en tu navegador. Sin cuenta, sin servidor y sin rastreo: tus noches se quedan en tu dispositivo salvo que tú las exportes.
 
+---
+
 ### Características
 
 - **Registro y Resumen** — anota cuándo te acostaste y te levantaste, calidad (1–5), despertares, factores (cafeína tarde, pantallas, ejercicio, estrés, alcohol, cena pesada, siesta, ruido/calor y los tuyos propios) y notas libres. Duración en vivo y seis KPI: promedios de 7 y 30 días, calidad, despertares, deuda de sueño y regularidad.
@@ -41,6 +47,8 @@ Un diario de sueño privado, que funciona sin conexión y corre completamente en
 - **PWA instalable** — manifiesto web, rutas relativas para proyectos de GitHub Pages, modo standalone, service worker Network-First para HTML, caché offline de recursos y recarga automática al activarse una versión nueva.
 - **Preparada para iOS/Android** — `viewport-fit=cover`, zonas seguras en cabecera, cuerpo y diálogos, diseño con `100dvh` e iconos PNG reales (180/192/512) con su SVG de origen.
 - **Datos de ejemplo** en el primer arranque para que el panel no esté vacío; desaparecen en cuanto guardas tu primera noche.
+
+---
 
 ### Privacidad y licencia
 
