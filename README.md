@@ -1,8 +1,8 @@
+# SleepTrack
+
 [![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-SleepTrack-6366F1)](https://wolver-fik.github.io/SleepTrack/)
 
 [English](#english) · [Español](#español)
-
-# SleepTrack
 
 ## English
 
