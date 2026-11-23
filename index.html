@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="theme-color" content="#0B0F1A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>SleepTrack</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icons/icon-180.png">
+<link rel="icon" type="image/png" href="./icons/icon-192.png">
+<link rel="stylesheet" href="./css/styles.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <p class="eyebrow" id="today"></p>
+      <h1>SleepTrack</h1>
+      <p class="subtitle" data-i18n="header.subtitle">REGISTRO · PATRONES · DESCANSO</p>
+    </div>
+    <div class="top-actions">
+      <div class="lang">
+        <label class="sr" for="langSel" data-i18n="header.language">Idioma</label>
+        <select id="langSel" data-i18n-aria="header.language" aria-label="Idioma">
+          <option value="en">EN</option>
+          <option value="es">ES</option>
+          <option value="pt">PT</option>
+          <option value="fr">FR</option>
+          <option value="it">IT</option>
+          <option value="de">DE</option>
+          <option value="ru">RU</option>
+          <option value="ja">JA</option>
+        </select>
+      </div>
+      <div class="goal" role="group" data-i18n-aria="header.goal" aria-label="Meta de horas de sueño">
+        <span class="goal-l" data-i18n="header.goal">Meta</span>
+        <button type="button" id="goalMinus" data-i18n-aria="header.goalDown" aria-label="Bajar la meta media hora">−</button>
+        <output id="goalVal" aria-live="polite">8 h</output>
+        <button type="button" id="goalPlus" data-i18n-aria="header.goalUp" aria-label="Subir la meta media hora">+</button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="tabs" id="tabs" role="tablist" data-i18n-aria="tabs.aria" aria-label="Vistas de SleepTrack">
+    <button type="button" class="tab" id="tabBtn-record" role="tab" aria-selected="true" aria-controls="view-record" data-tab="record" data-i18n="tabs.record">Registro y Resumen</button>
+    <button type="button" class="tab" id="tabBtn-analysis" role="tab" aria-selected="false" aria-controls="view-analysis" data-tab="analysis" tabindex="-1" data-i18n="tabs.analysis">Análisis y Patrones</button>
+    <button type="button" class="tab" id="tabBtn-history" role="tab" aria-selected="false" aria-controls="view-history" data-tab="history" tabindex="-1" data-i18n="tabs.history">Historial</button>
+  </nav>
+
+  <p class="banner" id="banner" hidden>
+    <span data-i18n-html="banner.demoHtml"><b>Vista de ejemplo.</b> Los datos son inventados para mostrar cómo se ve el panel. Desaparecen cuando guardes tu primera noche.</span>
+    <button type="button" class="ghost" id="demoOffBtn" data-i18n="banner.start">Empezar en cero</button>
+  </p>
+
+  <main>
+    <!-- PESTAÑA 1 -->
+    <section class="view" id="view-record" role="tabpanel" aria-labelledby="tabBtn-record">
+      <div class="top-grid">
+        <section class="card" aria-labelledby="entryTitle">
+          <form id="form" autocomplete="off" novalidate>
+            <div class="entry-head">
+              <h2 id="entryTitle" data-i18n="form.newTitle">Registrar la noche</h2>
+              <label><span class="sr" data-i18n="form.dateAria">Fecha en que despertaste</span><input type="date" id="fDate" data-i18n-aria="form.dateAria" aria-label="Fecha en que despertaste"></label>
+            </div>
+            <div class="times">
+              <label><span class="lab" data-i18n="form.bed">Me acosté</span><input type="time" id="fBed"></label>
+              <label><span class="lab" data-i18n="form.wake">Me levanté</span><input type="time" id="fWake"></label>
+            </div>
+            <div class="dur" aria-live="polite">
+              <div class="dur-val" id="durVal">—</div>
+              <div class="dur-bar"><i id="durFill"></i></div>
+              <div class="dur-sub" id="durSub"></div>
+            </div>
+            <fieldset>
+              <legend class="lab" data-i18n="form.question">¿Cómo descansaste?</legend>
+              <div class="q-row" id="qRow"></div>
+            </fieldset>
+            <div class="aw">
+              <span class="lab" data-i18n="form.awake">Despertares nocturnos</span>
+              <div class="step">
+                <button type="button" id="awMinus" data-i18n-aria="form.awDown" aria-label="Un despertar menos">−</button>
+                <output id="awVal">0</output>
+                <button type="button" id="awPlus" data-i18n-aria="form.awUp" aria-label="Un despertar más">+</button>
+              </div>
+            </div>
+            <fieldset>
+              <legend class="lab" data-i18n="form.factors">Factores de la noche</legend>
+              <div class="chips" id="chips"></div>
+              <div class="addf">
+                <input type="text" id="fCustom" maxlength="24" data-i18n-ph="form.customPh" data-i18n-aria="form.customAria" placeholder="Otro factor" aria-label="Nombre de otro factor">
+                <button type="button" class="ghost" id="addCustom" data-i18n="form.add">Agregar</button>
+              </div>
+            </fieldset>
+            <label class="note"><span class="lab" data-i18n="form.note">Nota</span><input type="text" id="fNote" maxlength="140" data-i18n-ph="form.notePh" placeholder="Algo que quieras recordar"></label>
+            <div class="actions">
+              <button type="submit" class="primary" id="saveBtn" data-i18n="form.save">Guardar noche</button>
+              <button type="button" class="ghost" id="todayBtn" hidden data-i18n="form.goToday">Ir a hoy</button>
+              <p id="msg" role="status"></p>
+            </div>
+          </form>
+        </section>
+
+        <div class="record-side">
+          <section class="kpis" id="kpis" data-i18n-aria="kpi.aria" aria-label="Resumen"></section>
+          <section class="card" aria-labelledby="recentTitle">
+            <div class="ch-head">
+              <h2 id="recentTitle" data-i18n="recent.title">Últimas 3 noches</h2>
+              <button type="button" class="ghost" id="goHistory" data-i18n="recent.view">Ver historial</button>
+            </div>
+            <ul class="recent" id="recent"></ul>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <!-- PESTAÑA 2 -->
+    <section class="view" id="view-analysis" role="tabpanel" aria-labelledby="tabBtn-analysis" hidden>
+      <section class="card" aria-labelledby="chTitle">
+        <div class="ch-head">
+          <h2 id="chTitle" data-i18n="analysis.title">Historial visual</h2>
+          <div class="seg" id="rangeSeg" role="group" data-i18n-aria="analysis.period" aria-label="Período">
+            <button type="button" data-range="7" aria-pressed="false" data-i18n="analysis.range7">7 días</button>
+            <button type="button" data-range="14" aria-pressed="false" data-i18n="analysis.range14">14 días</button>
+            <button type="button" data-range="30" aria-pressed="true" data-i18n="analysis.range30">30 días</button>
+            <button type="button" data-range="90" aria-pressed="false" data-i18n="analysis.range90">90 días</button>
+          </div>
+        </div>
+        <p class="readout" id="readout" aria-live="polite"></p>
+        <div id="charts">
+          <div class="ch">
+            <div class="ch-t"><h3 data-i18n="chart.hours">Horas dormidas</h3>
+              <div class="legend"><span><i style="background:var(--accent)"></i><span data-i18n="chart.legendGoal">Llegaste a la meta</span></span><span><i style="background:var(--bar-low)"></i><span data-i18n="chart.legendBelow">Por debajo</span></span><span><i class="ln"></i><span data-i18n="chart.legendMA">Promedio móvil de 7 noches</span></span></div></div>
+            <div id="chHours"></div>
+          </div>
+          <div class="ch">
+            <div class="ch-t"><h3 data-i18n="chart.window">Horario de sueño</h3>
+              <div class="legend"><span><i style="background:var(--accent)"></i><span data-i18n="chart.legendWin">De acostarte a levantarte (más intenso = mejor calidad)</span></span><span><i class="ln"></i><span data-i18n="chart.legendAvg">Horario promedio</span></span></div></div>
+            <div id="chWin"></div>
+          </div>
+          <div class="ch">
+            <div class="ch-t"><h3 data-i18n="chart.quality">Calidad y despertares</h3>
+              <div class="legend"><span><i style="background:var(--accent)"></i><span data-i18n="chart.legendQ">Calidad de 1 a 5</span></span><span><i style="background:var(--warn)"></i><span data-i18n="chart.legendAw">Despertares</span></span></div></div>
+            <div id="chQ"></div>
+          </div>
+        </div>
+      </section>
+
+      <div class="two-col">
+        <section class="card" aria-labelledby="avTitle">
+          <div class="ch-head">
+            <h2 id="avTitle" data-i18n="avgs.title">Promedios</h2>
+            <div class="seg" id="avgSeg" role="group" data-i18n-aria="avgs.groupBy" aria-label="Agrupar por">
+              <button type="button" data-avg="week" aria-pressed="true" data-i18n="avgs.week">Semanas</button>
+              <button type="button" data-avg="month" aria-pressed="false" data-i18n="avgs.month">Meses</button>
+            </div>
+          </div>
+          <ul class="avg-list" id="avgList"></ul>
+          <p class="cap" data-i18n="avgs.cap">La marca vertical es tu meta de sueño.</p>
+        </section>
+        <section class="card" aria-labelledby="wdTitle">
+          <h2 id="wdTitle" data-i18n="weekdays.title">Qué noches duermes mejor</h2>
+          <div class="wd" id="wd"></div>
+          <p class="cap" data-i18n="weekdays.cap">Cada barra es la noche que empieza ese día: la del viernes termina el sábado. Se marca la de mejor calidad.</p>
+        </section>
+      </div>
+
+      <section class="card" aria-labelledby="inTitle">
+        <h2 id="inTitle" data-i18n="insights.title">Patrones detectados</h2>
+        <ul class="ins" id="ins"></ul>
+      </section>
+    </section>
+
+    <!-- PESTAÑA 3 -->
+    <section class="view" id="view-history" role="tabpanel" aria-labelledby="tabBtn-history" hidden>
+      <section class="card" aria-labelledby="hiTitle">
+        <h2 id="hiTitle" data-i18n="history.title">Historial</h2>
+        <ul class="hist" id="hist"></ul>
+        <div id="histMore"></div>
+      </section>
+
+      <details class="card" id="backup">
+        <summary data-i18n="backup.title">Copia de seguridad</summary>
+        <div class="bk">
+          <p data-i18n="backup.p">Tus datos viven solo en este navegador y en este dispositivo. Si borras los datos del sitio o cambias de equipo se pierden, así que de vez en cuando genera una copia y guárdala en una nota o en un correo a ti mismo.</p>
+          <textarea id="bk" data-i18n-aria="backup.taAria" data-i18n-ph="backup.taPh" aria-label="Texto de la copia de seguridad" spellcheck="false" placeholder="Aquí aparece la copia, o pega una para importarla."></textarea>
+          <div class="bk-row">
+            <button type="button" class="ghost" id="bkExport" data-i18n="backup.json">Generar y copiar JSON</button>
+            <button type="button" class="ghost" id="bkExportCsv" data-i18n="backup.csv">Descargar CSV</button>
+            <button type="button" class="ghost" id="bkImport" data-i18n="backup.import">Importar desde el texto</button>
+            <button type="button" class="ghost danger" id="bkWipe" data-i18n="backup.wipe">Borrar todos los datos</button>
+          </div>
+          <p id="bmsg" role="status"></p>
+        </div>
+      </details>
+
+      <p class="foot" id="foot"></p>
+    </section>
+  </main>
+</div>
+
+<script src="./js/i18n/i18n.js"></script>
+<script src="./js/i18n/en.js"></script>
+<script src="./js/i18n/es.js"></script>
+<script src="./js/i18n/pt.js"></script>
+<script src="./js/i18n/fr.js"></script>
+<script src="./js/i18n/it.js"></script>
+<script src="./js/i18n/de.js"></script>
+<script src="./js/i18n/ru.js"></script>
+<script src="./js/i18n/ja.js"></script>
+<script src="./js/storage.js"></script>
+<script src="./js/app.js"></script>
+</body>
+</html>
