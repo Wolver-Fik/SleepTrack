@@ -88,7 +88,7 @@ h1{font-size:30px;font-weight:600;letter-spacing:-.02em;line-height:1.1}
 .goal button:hover{background:var(--line)}
 .goal output{min-width:3.6em;text-align:center;font-variant-numeric:tabular-nums;font-weight:600}
 .tabs{display:flex;flex-wrap:wrap;gap:8px;background:var(--surface);border:1px solid var(--line-soft);border-radius:14px;padding:5px}
-.tab{flex:1 1 170px;border-radius:10px;padding:10px 12px;font-size:13.5px;font-weight:600;color:var(--muted);text-align:center;white-space:nowrap}
+.tab{flex:1 1 170px;border-radius:10px;padding:10px 12px;font-size:13.5px;font-weight:600;color:var(--muted);text-align:center;white-space:nowrap;overflow-wrap:normal;word-break:normal;hyphens:none}
 .tab:hover{color:var(--fg);background:var(--surface-2)}
 .tab[aria-selected=true]{background:var(--accent);color:var(--accent-ink)}
 .banner{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:color-mix(in srgb,var(--warn) 12%,var(--surface));border:1px solid color-mix(in srgb,var(--warn) 35%,transparent);color:var(--fg);padding:10px 14px;border-radius:12px;font-size:14px}
@@ -109,9 +109,16 @@ input[type=date],input[type=time],input[type=text]{
   border-radius:10px;padding:9px 12px;min-width:0;width:100%;
 }
 .entry-head input{width:auto}
-.times{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.times label,.note{display:flex;flex-direction:column;gap:6px}
-.times input{font-size:22px;font-variant-numeric:tabular-nums;padding:10px 12px}
+.times{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:end}
+.times label,.note{display:flex;flex-direction:column;gap:6px;min-width:0}
+.times label{overflow:hidden}
+.times input{
+  display:block;width:100%;min-width:0;max-width:100%;box-sizing:border-box;
+  -webkit-appearance:none;appearance:none;
+  padding:12px 8px;text-align:center;font-size:1.1rem;
+  font-variant-numeric:tabular-nums;
+}
+.times input:focus-visible{outline-offset:-2px}
 .dur{display:flex;flex-direction:column;gap:8px}
 .dur-val{font-size:40px;font-weight:300;line-height:1.1;font-variant-numeric:tabular-nums}
 .dur-val small{font-size:15px;color:var(--muted);font-weight:400;margin:0 4px 0 2px}
@@ -307,13 +314,33 @@ body.modal-open{overflow:hidden;height:100dvh}
   .hrow{grid-template-columns:52px minmax(0,1fr)}
   .h-act{grid-column:2}
   .arow{grid-template-columns:48px minmax(0,1fr) 82px;gap:8px}
-  .times input{font-size:20px}
   .banner button{width:100%}
+}
+@media (max-width:600px){
+  /* Cabecera compacta: logotipo + idioma en la primera fila, meta debajo. */
+  .top{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    grid-template-areas:"brand lang" "goal goal";
+    align-items:center;
+    gap:10px 12px;
+  }
+  .brand{grid-area:brand}
+  .lang{grid-area:lang;justify-self:end}
+  .top-actions{grid-area:goal;width:100%;justify-content:center}
+  .goal{max-width:360px}
+
+  /* Tres pestañas en una sola fila: una palabra, sin ajustes ni guiones. */
+  .tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;padding:4px}
+  .tab{
+    min-width:0;padding:8px 4px;font-size:11.5px;line-height:1.15;
+    white-space:nowrap;overflow-wrap:normal;word-break:normal;hyphens:none;
+  }
 }
 @media (max-width:380px){
   .k-val{font-size:21px}
   .kpi{padding:10px}
-  .tab{font-size:12.5px}
+  .tab{font-size:10.5px;padding:7px 3px}
 }
 @media (prefers-reduced-motion:no-preference){
   button,.dur-bar i,.wd-bar i,.a-track i{transition:background-color .15s,color .15s,border-color .15s,width .25s,height .25s}

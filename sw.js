@@ -4,7 +4,7 @@
 (function(){
 'use strict';
 
-var VERSION='sleeptrack-v3';
+var VERSION='sleeptrack-v5';
 var SCOPE=self.registration.scope;
 function abs(p){return new URL(p,SCOPE).href;}
 var INDEX=abs('./index.html');

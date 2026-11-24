@@ -38,20 +38,20 @@
         <p class="subtitle" data-i18n="header.subtitle">REGISTRO · PATRONES · DESCANSO</p>
       </div>
     </div>
+    <div class="lang">
+      <label class="sr" for="langSel" data-i18n="header.language">Idioma</label>
+      <select id="langSel" data-i18n-aria="header.language" aria-label="Idioma">
+        <option value="en">EN</option>
+        <option value="es">ES</option>
+        <option value="pt">PT</option>
+        <option value="fr">FR</option>
+        <option value="it">IT</option>
+        <option value="de">DE</option>
+        <option value="ru">RU</option>
+        <option value="ja">JA</option>
+      </select>
+    </div>
     <div class="top-actions">
-      <div class="lang">
-        <label class="sr" for="langSel" data-i18n="header.language">Idioma</label>
-        <select id="langSel" data-i18n-aria="header.language" aria-label="Idioma">
-          <option value="en">EN</option>
-          <option value="es">ES</option>
-          <option value="pt">PT</option>
-          <option value="fr">FR</option>
-          <option value="it">IT</option>
-          <option value="de">DE</option>
-          <option value="ru">RU</option>
-          <option value="ja">JA</option>
-        </select>
-      </div>
       <div class="goal" role="group" data-i18n-aria="header.goal" aria-label="Meta de horas de sueño">
         <span class="goal-l" data-i18n="header.goal">Meta</span>
         <button type="button" id="goalMinus" data-i18n-aria="header.goalDown" aria-label="Bajar la meta media hora">−</button>
@@ -62,8 +62,8 @@
   </header>
 
   <nav class="tabs" id="tabs" role="tablist" data-i18n-aria="tabs.aria" aria-label="Vistas de SleepTrack">
-    <button type="button" class="tab" id="tabBtn-record" role="tab" aria-selected="true" aria-controls="view-record" data-tab="record" data-i18n="tabs.record">Registro y Resumen</button>
-    <button type="button" class="tab" id="tabBtn-analysis" role="tab" aria-selected="false" aria-controls="view-analysis" data-tab="analysis" tabindex="-1" data-i18n="tabs.analysis">Análisis y Patrones</button>
+    <button type="button" class="tab" id="tabBtn-record" role="tab" aria-selected="true" aria-controls="view-record" data-tab="record" data-i18n="tabs.record">Registro</button>
+    <button type="button" class="tab" id="tabBtn-analysis" role="tab" aria-selected="false" aria-controls="view-analysis" data-tab="analysis" tabindex="-1" data-i18n="tabs.analysis">Analisis</button>
     <button type="button" class="tab" id="tabBtn-history" role="tab" aria-selected="false" aria-controls="view-history" data-tab="history" tabindex="-1" data-i18n="tabs.history">Historial</button>
   </nav>
 
