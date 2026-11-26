@@ -87,12 +87,18 @@ function makeDemo(){
     q=Math.max(1,Math.min(5,Math.round(q)));
     var f=[];
     if(caf)f.push(BASE[0]);if(scr)f.push(BASE[1]);if(ex)f.push(BASE[2]);if(st)f.push(BASE[3]);if(alc)f.push(BASE[4]);if(din)f.push(BASE[5]);
-    out[d]={bed:tfmt(bed),wake:tfmt(bed+dm),q:q,aw:aw,f:f,note:''};
+    out[d]={bed:tfmt(bed),wake:tfmt(bed+dm),q:q,aw:aw,f:f,note:demoNote(q,caf,st)};
     if(dur(out[d])===0)delete out[d];
   }
   return out;
 }
+function demoNote(q,caf,st){
+  var I=window.SleepI18n;
+  var key=q>=4?'demo.note1':(q<=2?'demo.note3':((caf||st)?'demo.note2':''));
+  return key&&I?I.t(key):'';
+}
 function demo(){var t=todayStr();if(!demoCache||demoDay!==t){demoCache=makeDemo();demoDay=t;}return demoCache;}
+function refreshDemo(){demoCache=null;demoDay='';}
 function isDemo(){return !demoOff&&Object.keys(state.entries).length===0;}
 function entries(){return isDemo()?demo():state.entries;}
 
@@ -157,6 +163,7 @@ window.SleepStorage={
   sanitize:sanitize,
   isDemo:isDemo,
   dismissDemo:function(){demoOff=true;persistDemoOff();},
+  refreshDemo:refreshDemo,
   entries:entries,
   ownEntries:function(){return state.entries;},
   setGoal:setGoal,

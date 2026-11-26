@@ -15,7 +15,7 @@ function MO_SHORT(){return I.get('month.short');}
 function QLAB(){return I.get('quality.labels');}
 
 var state=S.state();
-var ui={range:30,avg:'week',histN:20,editing:null,confirmDel:null,wipe:false,lastW:0,tab:'record'};
+var ui={range:30,avg:'week',histN:20,editing:null,confirmDel:null,wipe:false,lastW:0,tab:'record',calYM:todayStr().slice(0,7),calSel:'',year:+todayStr().slice(0,4)};
 var form={q:0,aw:0,f:{}};
 var TABS=['record','analysis','history'];
 
@@ -349,6 +349,114 @@ function renderInsights(rs){
   $('ins').innerHTML=h;
 }
 
+/* ---------- Calendario de descanso ---------- */
+function shiftMonth(ym,n){
+  var p=ym.split('-'),d=new Date(+p[0],+p[1]-1+n,1,12);
+  return d.getFullYear()+'-'+pad(d.getMonth()+1);
+}
+function calState(r){
+  if(!r)return {cls:'',key:'calendar.empty'};
+  var g=state.goal*60;
+  if(r.q>=4&&r.d>=g)return {cls:'cal-opt',key:'calendar.opt'};
+  if(r.q<=2||r.d<g*0.75)return {cls:'cal-short',key:'calendar.short'};
+  return {cls:'cal-reg',key:'calendar.reg'};
+}
+function renderCalendar(rs){
+  var ym=ui.calYM,p=ym.split('-'),y=+p[0],m=+p[1]-1,mo=MO_LONG(),ws=WD_SHORT(),map=byDate(rs);
+  $('calLabel').textContent=mo[m]+' '+y;
+  $('calWeek').innerHTML=ws.map(function(w){return '<span>'+esc(w)+'</span>';}).join('');
+  var days=new Date(y,m+1,0).getDate(),first=new Date(y,m,1).getDay(),h='';
+  for(var i=0;i<first;i++)h+='<span class="cal-blank" aria-hidden="true"></span>';
+  for(var day=1;day<=days;day++){
+    var date=ym+'-'+pad(day),r=map[date],st=calState(r);
+    var aria=+day+' '+mo[m]+' '+y+' · '+(r?fmtDur(r.d)+' · '+L('recent.qualityAria',{q:r.q}):L('calendar.noRecord'));
+    h+='<button type="button" class="cal-day '+st.cls+(ui.calSel===date?' sel':'')+'" data-date="'+date+'" aria-pressed="'+(ui.calSel===date)+'" aria-label="'+esc(aria)+'">'+day+'</button>';
+  }
+  $('calGrid').innerHTML=h;
+  var d=$('calDetail');
+  if(ui.calSel&&ui.calSel.slice(0,7)===ym){
+    var s=calState(map[ui.calSel]);
+    d.innerHTML='<div class="cal-detail-head"><strong>'+L('calendar.detail')+'</strong>'+(S.isDemo()?'':'<button type="button" class="ghost" id="calEdit">'+L('calendar.edit')+'</button>')+'</div>'+describe(ui.calSel,rs,'')+'<span class="cal-tag '+s.cls+'">'+L(s.key)+'</span>';
+  }else{
+    d.innerHTML='<p class="empty" style="margin:0">'+L('calendar.hint')+'</p>';
+  }
+}
+
+/* ---------- Correlación de factores (tendencia personal, no diagnóstico) ---------- */
+function renderCorrelation(rs){
+  var names={};
+  rs.forEach(function(r){r.f.forEach(function(f){names[f]=true;});});
+  var list=[];
+  Object.keys(names).forEach(function(f){
+    var w=rs.filter(function(r){return r.f.indexOf(f)>=0;});
+    var wo=rs.filter(function(r){return r.f.indexOf(f)<0;});
+    if(w.length<2||wo.length<2)return;
+    var qa=avg(w.map(function(r){return r.q;})),qb=avg(wo.map(function(r){return r.q;}));
+    var da=avg(w.map(function(r){return r.d;})),db=avg(wo.map(function(r){return r.d;}));
+    list.push({f:f,a:w.length,b:wo.length,qa:qa,qb:qb,da:da,db:db,dq:qa-qb,dd:da-db});
+  });
+  if(!list.length){$('corrList').innerHTML='<li class="empty">'+L('corr.need')+'</li>';return;}
+  list.sort(function(x,y){return Math.abs(y.dq)-Math.abs(x.dq)||Math.abs(y.dd)-Math.abs(x.dd);});
+  var h='';
+  list.slice(0,8).forEach(function(x){
+    var cq=x.dq>=0?'good':'warn',cd=x.dd>=0?'good':'warn';
+    h+='<li class="corr-row">'+
+      '<div class="corr-name"><b>'+esc(factorName(x.f))+'</b><small>'+L('corr.counts',{a:x.a,b:x.b})+'</small></div>'+
+      '<div class="corr-metric"><span class="lab">'+L('corr.quality')+'</span><b class="'+cq+'">'+(x.dq>=0?'+':'−')+num1(Math.abs(x.dq))+'</b><small>'+num1(x.qa)+' vs '+num1(x.qb)+'</small></div>'+
+      '<div class="corr-metric"><span class="lab">'+L('corr.duration')+'</span><b class="'+cd+'">'+(x.dd>=0?'+':'−')+fmtDur(Math.abs(x.dd))+'</b><small>'+fmtDur(x.da)+' vs '+fmtDur(x.db)+'</small></div>'+
+      '</li>';
+  });
+  $('corrList').innerHTML=h;
+}
+
+/* ---------- Comparación mensual y evolución anual ---------- */
+function monthStats(list){
+  if(!list.length)return null;
+  return {
+    n:list.length,
+    h:avg(list.map(function(r){return r.d;})),
+    q:avg(list.map(function(r){return r.q;})),
+    reg:sd(list.map(bedN)),
+    debt:avg(list.map(function(r){return Math.max(0,state.goal*60-r.d);}))
+  };
+}
+function monthRows(rs,ym){return rs.filter(function(r){return r.date.slice(0,7)===ym;});}
+function signedMin(v){return (v>=0?'+':'−')+fmtDur(Math.abs(v));}
+function deltaClass(d,betterHigh){
+  var good=betterHigh?d>0:d<0,bad=betterHigh?d<0:d>0;
+  return good?'good':(bad?'warn':'');
+}
+function cmpTile(lab,cur,prev,delta,cls,sub){
+  return '<div class="cmp-tile"><span class="lab">'+lab+'</span><b>'+cur+'</b><span class="cmp-prev">'+L('monthly.previous')+': '+prev+'</span><span class="cmp-delta '+(cls||'')+'">'+(delta||'—')+(sub?' '+sub:'')+'</span></div>';
+}
+function renderMonthly(rs){
+  var curYM=todayStr().slice(0,7),prevYM=shiftMonth(curYM,-1);
+  var a=monthStats(monthRows(rs,curYM)),b=monthStats(monthRows(rs,prevYM)),h='';
+  function tile(lab,va,vb,d,betterHigh,sub){h+=cmpTile(lab,va,vb,d,deltaClass(d,betterHigh),sub);}
+  tile(L('monthly.hours'),a?fmtDur(a.h):'—',b?fmtDur(b.h):'—',a&&b?signedMin(a.h-b.h):'',true,'');
+  tile(L('monthly.quality'),a?num1(a.q)+' / 5':'—',b?num1(b.q)+' / 5':'—',a&&b?((a.q-b.q>=0?'+':'−')+num1(Math.abs(a.q-b.q))):'',true,'');
+  tile(L('monthly.regularity'),a&&a.reg!==null?'±'+Math.round(a.reg)+' min':'—',b&&b.reg!==null?'±'+Math.round(b.reg)+' min':'—',a&&b&&a.reg!==null&&b.reg!==null?signedMin(a.reg-b.reg):'',false,'');
+  tile(L('monthly.debt'),a?fmtDur(a.debt):'—',b?fmtDur(b.debt):'—',a&&b?signedMin(a.debt-b.debt):'',false,L('monthly.perNight'));
+  $('monthCompare').innerHTML=h;
+
+  $('yearLabel').textContent=String(ui.year);
+  var mo=MO_SHORT(),mlong=MO_LONG(),list=[],mx=state.goal*60;
+  for(var m=0;m<12;m++){
+    var key=ui.year+'-'+pad(m+1),st=monthStats(monthRows(rs,key));
+    if(st)mx=Math.max(mx,st.h);
+    list.push({ym:key,m:m,st:st});
+  }
+  var g='';
+  list.forEach(function(x){
+    var pct=x.st?f1(Math.min(100,x.st.h/mx*100)):0;
+    var aria=L('yearly.cellAria',{m:mlong[x.m],y:ui.year,h:x.st?fmtDur(x.st.h):L('monthly.noData'),q:x.st?num1(x.st.q):'—'});
+    g+='<button type="button" class="year-cell'+(x.ym===curYM?' cur':'')+'" data-ym="'+x.ym+'" aria-label="'+esc(aria)+'">'+
+      '<span class="y-lab">'+esc(mo[x.m])+'</span><span class="y-bar"><i class="'+(x.st&&x.st.h>=state.goal*60?'ok':'')+'" style="height:'+pct+'%"></i></span>'+
+      '<span class="y-val">'+(x.st?num1(x.st.h/60)+' h':'—')+'</span><span class="y-q">'+(x.st?num1(x.st.q):'—')+'</span></button>';
+  });
+  $('yearGrid').innerHTML=g;
+}
+
 /* ---------- Historial ---------- */
 function renderHistory(rs){
   var dm=S.isDemo(),list=rs.slice().reverse(),shown=list.slice(0,ui.histN),h='',ws=WD_SHORT(),mo=MO_SHORT();
@@ -483,7 +591,7 @@ function doWipe(){
     ui.wipe=true;$('bkWipe').textContent=L('backup.wipeConfirm');
     setTimeout(function(){ui.wipe=false;$('bkWipe').textContent=L('backup.wipe');},4000);return;
   }
-  ui.wipe=false;$('bkWipe').textContent=L('backup.wipe');
+  ui.wipe=false;$('bkWipe').textContent=L('backup.wipe');ui.calSel='';
   S.wipe();setForm(todayStr());render();bmsg(L('backup.wipeDone'),false);
 }
 function doDemoOff(){S.dismissDemo();render();}
@@ -499,7 +607,7 @@ function render(){
   var rs=rows();
   $('banner').hidden=!S.isDemo();
   $('goalVal').textContent=goalTxt();
-  renderKpis(rs);renderRecent(rs);renderAvgs(rs);renderWeekdays(rs);renderInsights(rs);renderHistory(rs);renderFoot();
+  renderKpis(rs);renderRecent(rs);renderAvgs(rs);renderWeekdays(rs);renderInsights(rs);renderHistory(rs);renderCalendar(rs);renderCorrelation(rs);renderMonthly(rs);renderFoot();
   if(ui.tab==='analysis')renderCharts(rs);
   $('rangeSeg').querySelectorAll('button').forEach(function(b){b.setAttribute('aria-pressed',String(+b.getAttribute('data-range')===ui.range));});
   $('avgSeg').querySelectorAll('button').forEach(function(b){b.setAttribute('aria-pressed',String(b.getAttribute('data-avg')===ui.avg));});
@@ -548,6 +656,23 @@ function bind(){
   $('fNote').addEventListener('keydown',function(ev){if(ev.key==='Enter'){ev.preventDefault();$('saveBtn').click();}});
   $('rangeSeg').addEventListener('click',function(ev){var b=ev.target.closest('button[data-range]');if(!b)return;ui.range=+b.getAttribute('data-range');render();});
   $('avgSeg').addEventListener('click',function(ev){var b=ev.target.closest('button[data-avg]');if(!b)return;ui.avg=b.getAttribute('data-avg');render();});
+  $('calGrid').addEventListener('click',function(ev){
+    var b=ev.target.closest('button[data-date]');if(!b)return;
+    ui.calSel=b.getAttribute('data-date');renderCalendar(rows());
+  });
+  $('calPrev').addEventListener('click',function(){ui.calYM=shiftMonth(ui.calYM,-1);ui.calSel='';renderCalendar(rows());});
+  $('calNext').addEventListener('click',function(){ui.calYM=shiftMonth(ui.calYM,1);ui.calSel='';renderCalendar(rows());});
+  $('calDetail').addEventListener('click',function(ev){
+    if(!ev.target.closest('#calEdit')||!ui.calSel)return;
+    var d=ui.calSel;setTab('record');setForm(d);$('entryTitle').scrollIntoView({block:'start'});
+  });
+  $('yearPrev').addEventListener('click',function(){ui.year=Math.max(1970,ui.year-1);renderMonthly(rows());});
+  $('yearNext').addEventListener('click',function(){ui.year=Math.min(2100,ui.year+1);renderMonthly(rows());});
+  $('yearGrid').addEventListener('click',function(ev){
+    var b=ev.target.closest('button[data-ym]');if(!b)return;
+    ui.calYM=b.getAttribute('data-ym');ui.calSel='';renderCalendar(rows());
+    $('calTitle').scrollIntoView({block:'start'});
+  });
   function onHit(ev){var t=ev.target;if(t&&t.classList&&t.classList.contains('hit')){$('readout').innerHTML=describe(t.getAttribute('data-d'),rows(),'');}}
   $('charts').addEventListener('pointerover',onHit);
   $('charts').addEventListener('click',onHit);
@@ -559,6 +684,7 @@ function bind(){
     var date=d.getAttribute('data-del');
     if(ui.confirmDel===date){
       delete state.entries[date];ui.confirmDel=null;S.persist();
+      if(ui.calSel===date)ui.calSel='';
       if($('fDate').value===date)setForm(date);
       render();
     }else{
@@ -600,6 +726,7 @@ function init(){
   I.init();
   renderToday();
   I.onChange(function(){
+    if(S.refreshDemo)S.refreshDemo();
     renderToday();
     render();
     syncForm();

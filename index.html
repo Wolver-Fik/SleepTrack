@@ -165,6 +165,33 @@
         </div>
       </section>
 
+      <section class="card" aria-labelledby="calTitle">
+        <div class="ch-head">
+          <h2 id="calTitle" data-i18n="calendar.title">Calendario de descanso</h2>
+          <div class="cal-nav" role="group" data-i18n-aria="calendar.monthNav" aria-label="Mes del calendario">
+            <button type="button" id="calPrev" data-i18n-aria="calendar.prev" aria-label="Mes anterior">‹</button>
+            <output id="calLabel" aria-live="polite"></output>
+            <button type="button" id="calNext" data-i18n-aria="calendar.next" aria-label="Mes siguiente">›</button>
+          </div>
+        </div>
+        <p class="cap" data-i18n="calendar.hint">Toca un día para ver su resumen. El color resume duración y calidad.</p>
+        <div class="cal-week" id="calWeek" aria-hidden="true"></div>
+        <div class="cal-grid" id="calGrid"></div>
+        <div class="cal-legend" aria-hidden="true">
+          <span><i class="cal-opt"></i><span data-i18n="calendar.opt">Óptimo</span></span>
+          <span><i class="cal-reg"></i><span data-i18n="calendar.reg">Regular</span></span>
+          <span><i class="cal-short"></i><span data-i18n="calendar.short">Corto o bajo</span></span>
+          <span><i class="cal-empty"></i><span data-i18n="calendar.empty">Sin registro</span></span>
+        </div>
+        <div class="cal-detail" id="calDetail" aria-live="polite"></div>
+      </section>
+
+      <section class="card" aria-labelledby="corrTitle">
+        <div class="ch-head"><h2 id="corrTitle" data-i18n="corr.title">Factores y calidad</h2></div>
+        <p class="cap" data-i18n="corr.disclaimer">Tendencia observada de tus hábitos personales. No es un diagnóstico médico.</p>
+        <ul class="corr-list" id="corrList"></ul>
+      </section>
+
       <div class="two-col">
         <section class="card" aria-labelledby="avTitle">
           <div class="ch-head">
@@ -183,6 +210,21 @@
           <p class="cap" data-i18n="weekdays.cap">Cada barra es la noche que empieza ese día: la del viernes termina el sábado. Se marca la de mejor calidad.</p>
         </section>
       </div>
+
+      <section class="card" aria-labelledby="monthlyTitle">
+        <div class="ch-head">
+          <h2 id="monthlyTitle" data-i18n="monthly.title">Comparación mensual</h2>
+          <div class="cal-nav" role="group" data-i18n-aria="monthly.yearNav" aria-label="Año de la vista anual">
+            <button type="button" id="yearPrev" data-i18n-aria="monthly.yearPrev" aria-label="Año anterior">‹</button>
+            <output id="yearLabel" aria-live="polite"></output>
+            <button type="button" id="yearNext" data-i18n-aria="monthly.yearNext" aria-label="Año siguiente">›</button>
+          </div>
+        </div>
+        <p class="cap" data-i18n="monthly.sub">Mes actual frente al anterior. Toca un mes del año para abrirlo en el calendario.</p>
+        <div class="month-compare" id="monthCompare"></div>
+        <h3 class="year-title" data-i18n="yearly.title">Evolución anual</h3>
+        <div class="year-grid" id="yearGrid"></div>
+      </section>
 
       <section class="card" aria-labelledby="inTitle">
         <h2 id="inTitle" data-i18n="insights.title">Patrones detectados</h2>
