@@ -95,12 +95,33 @@
               <legend class="lab" data-i18n="form.question">¿Cómo descansaste?</legend>
               <div class="q-row" id="qRow"></div>
             </fieldset>
+            <fieldset>
+              <legend class="lab" data-i18n="form.energy">Energía al despertar</legend>
+              <p class="en-scale" data-i18n="form.energyHint">Opcional · 1 muy baja a 5 máxima</p>
+              <div class="q-row en-row" id="enRow"></div>
+            </fieldset>
             <div class="aw">
               <span class="lab" data-i18n="form.awake">Despertares nocturnos</span>
               <div class="step">
                 <button type="button" id="awMinus" data-i18n-aria="form.awDown" aria-label="Un despertar menos">−</button>
                 <output id="awVal">0</output>
                 <button type="button" id="awPlus" data-i18n-aria="form.awUp" aria-label="Un despertar más">+</button>
+              </div>
+            </div>
+            <div class="extras">
+              <div class="extra-field">
+                <label class="lab" for="fCaf" data-i18n="form.caffeine">Última cafeína</label>
+                <div class="extra-input">
+                  <input type="time" id="fCaf">
+                  <button type="button" class="mini" id="cafClear" data-i18n-aria="form.cafClear" data-i18n-title="form.cafClear" aria-label="Borrar hora de cafeína (no tomé)" title="Borrar hora de cafeína (no tomé)">×</button>
+                </div>
+              </div>
+              <div class="extra-field">
+                <label class="lab" for="fScreens" data-i18n="form.screens">Pantallas antes de dormir</label>
+                <div class="extra-input">
+                  <input type="number" id="fScreens" min="0" max="600" step="1" inputmode="numeric" data-i18n-ph="form.screensPh" data-i18n-aria="form.screens" placeholder="Minutos (opcional)" aria-label="Pantallas antes de dormir">
+                </div>
+                <div class="quick" id="scrQuick" role="group" data-i18n-aria="form.screens" aria-label="Pantallas antes de dormir"></div>
               </div>
             </div>
             <fieldset>
@@ -189,6 +210,7 @@
       <section class="card" aria-labelledby="corrTitle">
         <div class="ch-head"><h2 id="corrTitle" data-i18n="corr.title">Factores y calidad</h2></div>
         <p class="cap" data-i18n="corr.disclaimer">Tendencia observada de tus hábitos personales. No es un diagnóstico médico.</p>
+        <div class="energy-summary" id="energySummary" aria-live="polite"></div>
         <ul class="corr-list" id="corrList"></ul>
       </section>
 

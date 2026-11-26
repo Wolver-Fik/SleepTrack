@@ -104,7 +104,7 @@ h3{font-size:13px;font-weight:600;color:var(--fg)}
 /* Formulario */
 #form{display:flex;flex-direction:column;gap:18px}
 .entry-head{display:flex;justify-content:space-between;align-items:center;gap:12px}
-input[type=date],input[type=time],input[type=text]{
+input[type=date],input[type=time],input[type=text],input[type=number]{
   font:inherit;font-size:16px;color:var(--fg);background:var(--surface-2);border:1px solid var(--line);
   border-radius:10px;padding:9px 12px;min-width:0;width:100%;
 }
@@ -134,6 +134,25 @@ legend{padding:0;margin-bottom:8px}
 .q-row span{font-size:10.5px;color:var(--muted)}
 .q-row button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .q-row button[aria-pressed=true] span{color:var(--accent-ink)}
+/* Escala de energía y campos opcionales de cafeína/pantallas */
+.en-row{margin-top:2px}
+.en-row button{min-height:44px;justify-content:center;-webkit-tap-highlight-color:transparent}
+.en-row b{font-size:19px}
+.en-scale{font-size:11.5px;color:var(--muted);text-align:center;white-space:nowrap;hyphens:none;-webkit-hyphens:none;overflow:hidden;text-overflow:clip;margin-top:-2px}
+.extras{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.extra-field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.extra-field .lab{white-space:nowrap;hyphens:none;-webkit-hyphens:none;overflow:hidden;text-overflow:clip}
+.extra-input{display:flex;align-items:center;gap:6px;min-width:0}
+.extra-input input{flex:1 1 auto;font-size:16px;padding:9px 8px;text-align:center;font-variant-numeric:tabular-nums;-webkit-appearance:none;appearance:none;min-height:42px}
+.extra-input input[type=number]{-moz-appearance:textfield}
+.extra-input input[type=number]::-webkit-inner-spin-button,
+.extra-input input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.extra-input input::placeholder{color:var(--dim);opacity:1}
+.mini{flex:0 0 34px;width:34px;height:42px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--muted);font-size:20px;line-height:1}
+.mini:hover{color:var(--fg);border-color:var(--accent)}
+.quick{display:flex;flex-wrap:wrap;gap:4px}
+.quick button{min-width:0;min-height:34px;flex:1 1 auto;padding:5px 4px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);color:var(--muted);font-size:11.5px;font-variant-numeric:tabular-nums;white-space:nowrap;hyphens:none;-webkit-hyphens:none}
+.quick button[aria-pressed=true]{background:color-mix(in srgb,var(--accent) 26%,var(--surface-2));border-color:var(--accent);color:var(--fg)}
 .aw{display:flex;justify-content:space-between;align-items:center;gap:12px}
 .step{display:flex;align-items:center;gap:10px}
 .step button{width:40px;height:40px;border-radius:10px;background:var(--surface-2);border:1px solid var(--line);font-size:20px;line-height:1}
@@ -252,6 +271,9 @@ svg.chart{display:block;width:100%;height:auto;max-width:100%}
 .h-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;font-size:12.5px;color:var(--muted)}
 .h-tags span.t{border:1px solid var(--line);border-radius:999px;padding:1px 9px}
 .h-tags em{font-style:normal;color:var(--fg);opacity:.85}
+.h-extra{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.h-extra span{border:1px solid var(--line-soft);border-radius:999px;padding:1px 9px;font-size:11.5px;color:var(--muted);white-space:nowrap;hyphens:none;-webkit-hyphens:none;font-variant-numeric:tabular-nums}
+.h-extra span.energy{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
 .h-act{display:flex;gap:8px}
 .h-act button{font-size:12.5px;color:var(--muted);padding:4px 8px;border-radius:8px}
 .h-act button:hover{color:var(--fg);background:var(--surface-2)}
@@ -317,6 +339,13 @@ textarea{font:12.5px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;c
 .corr-metric b{font-size:15px;font-variant-numeric:tabular-nums}
 .corr-metric b.good{color:var(--good)}
 .corr-metric b.warn{color:var(--warn)}
+/* Promedio de energía cruzado con la duración del sueño */
+.energy-summary{margin-top:12px;padding:12px;border:1px solid color-mix(in srgb,var(--accent) 32%,var(--line-soft));border-radius:12px;background:var(--surface-2);font-size:12.5px;color:var(--muted)}
+.en-sum-head{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.en-sum-head b{font-size:17px;color:var(--fg);font-variant-numeric:tabular-nums}
+.en-sum-head b small{font-size:11px;color:var(--muted);font-weight:400}
+.energy-summary p{margin-top:4px;line-height:1.45;overflow-wrap:break-word;hyphens:none;-webkit-hyphens:none}
+.energy-summary .empty{margin:0}
 
 /* Comparación mensual y evolución anual */
 .month-compare{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:12px}
@@ -387,6 +416,8 @@ body.modal-open{overflow:hidden;height:100dvh}
   .seg button{flex:1 1 auto}
   .bk-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
   .bk-row .ghost{width:100%;white-space:normal;text-align:center;overflow-wrap:anywhere}
+  /* Cafeína y pantallas apiladas en móvil: sin desbordes en iOS ni Android. */
+  .extras{grid-template-columns:minmax(0,1fr)}
 }
 @media (max-width:600px){
   /* Cabecera compacta: logotipo + idioma en la primera fila, meta debajo. */

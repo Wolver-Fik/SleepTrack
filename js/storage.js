@@ -30,7 +30,8 @@ var demoCache=null,demoDay='',demoOff=false;
    de 5 MB de localStorage. */
 var DB_NAME='sleeptrack_db';
 var DB_VERSION=1;
-var SCHEMA_VERSION=1;
+/* v2 añade energy, caffeineAt y screensMin; los respaldos v1 siguen siendo válidos. */
+var SCHEMA_VERSION=2;
 var STORE_STATE='state';
 var STORE_FILES='files';
 var STATE_KEY='main';
@@ -178,7 +179,13 @@ function sanitize(o){
     if(dur(e)===0)return;
     var aw=Math.max(0,Math.min(30,Math.round(+e.aw||0)));
     var f=Array.isArray(e.f)?e.f.filter(function(x){return typeof x==='string'&&x.length>0&&x.length<=30;}).slice(0,16).map(function(x){return LEGACY[x]||x;}):[];
-    out.entries[k]={bed:e.bed,wake:e.wake,q:q,aw:aw,f:f,note:typeof e.note==='string'?e.note.slice(0,140):''};
+    /* Etapa 2: datos opcionales. Se normalizan a '' cuando no se registraron,
+       de modo que JSON, CSV, demo e importación usen el mismo esquema. */
+    var ev=Math.round(+e.energy),energy=(ev>=1&&ev<=5)?ev:'';
+    var caffeineAt=validT(e.caffeineAt)?e.caffeineAt:'';
+    var sm=Number(e.screensMin),screensMin=(e.screensMin!==''&&e.screensMin!=null&&isFinite(sm)&&sm>=0&&sm<=600)?Math.round(sm):'';
+    out.entries[k]={bed:e.bed,wake:e.wake,q:q,aw:aw,f:f,note:typeof e.note==='string'?e.note.slice(0,140):'',
+      energy:energy,caffeineAt:caffeineAt,screensMin:screensMin};
   });
   return out;
 }
@@ -218,9 +225,14 @@ function makeDemo(){
     var aw=Math.max(0,Math.round(0.7+(caf?0.7:0)+(st?0.9:0)+(alc?0.9:0)+(din?0.4:0)-(ex?0.3:0)+gauss(r)*0.7));
     var q=3.7+(ex?0.5:0)-(caf?0.7:0)-(st?0.7:0)-(scr?0.4:0)-(alc?0.5:0)+(dm-450)/120*0.7-aw*0.15+gauss(r)*0.45;
     q=Math.max(1,Math.min(5,Math.round(q)));
+    var energy=Math.max(1,Math.min(5,Math.round(1.2+(q-1)*0.62+(dm-420)/150-aw*0.12+gauss(r)*0.3)));
+    /* Cafeína tardía después de las 16:00; algo de cafeína temprana en otras noches. */
+    var caffeineAt=caf?tfmt(960+Math.round(r()*150)):(r()<0.45?tfmt(660+Math.round(r()*270)):'');
+    var screensMin=scr?Math.round((45+r()*100)/5)*5:Math.round((5+r()*25)/5)*5;
     var f=[];
     if(caf)f.push(BASE[0]);if(scr)f.push(BASE[1]);if(ex)f.push(BASE[2]);if(st)f.push(BASE[3]);if(alc)f.push(BASE[4]);if(din)f.push(BASE[5]);
-    out[d]={bed:tfmt(bed),wake:tfmt(bed+dm),q:q,aw:aw,f:f,note:demoNote(q,caf,st)};
+    out[d]={bed:tfmt(bed),wake:tfmt(bed+dm),q:q,aw:aw,f:f,note:demoNote(q,caf,st),
+      energy:energy,caffeineAt:caffeineAt,screensMin:screensMin};
     if(dur(out[d])===0)delete out[d];
   }
   return out;
@@ -272,6 +284,8 @@ function validateBackup(o){
   var sv=o.schemaVersion==null?1:Number(o.schemaVersion);
   if(!isFinite(sv)||sv<1||sv>SCHEMA_VERSION)return {ok:false,msgText:'La versión de esquema del respaldo no es compatible.'};
   if(!o.entries||typeof o.entries!=='object'||Array.isArray(o.entries))return {ok:false,msgText:'El respaldo no tiene registros válidos.'};
+  /* sanitize valida también los campos opcionales de la Etapa 2 (energía,
+     cafeína y pantallas) sin descartar respaldos anteriores que no los tenían. */
   var rawKeys=Object.keys(o.entries),clean=sanitize(o),keys=Object.keys(clean.entries);
   if(!keys.length)return {ok:false,msg:'backup.importNoNights'};
   if(keys.length!==rawKeys.length)return {ok:false,msgText:'El respaldo está incompleto o dañado: hay registros no válidos.'};
@@ -282,10 +296,11 @@ function exportCSV(){
   if(!keys.length)return {ok:false,msg:'backup.exportNone'};
   var I=window.SleepI18n;
   function h(k){return I?I.t('csv.'+k):k;}
-  var lines=[h('date')+','+h('bed')+','+h('wake')+','+h('hours')+','+h('quality')+','+h('awakenings')+','+h('factors')+','+h('note')];
+  var lines=[h('date')+','+h('bed')+','+h('wake')+','+h('hours')+','+h('quality')+','+h('awakenings')+','+h('factors')+','+h('note')+','+h('energy')+','+h('caffeine')+','+h('screens')];
   keys.forEach(function(k){
     var e=state.entries[k];
-    lines.push([k,e.bed,e.wake,(dur(e)/60).toFixed(2),e.q,e.aw,(e.f||[]).map(factorLabel).join(' | '),e.note||''].map(csvCell).join(','));
+    lines.push([k,e.bed,e.wake,(dur(e)/60).toFixed(2),e.q,e.aw,(e.f||[]).map(factorLabel).join(' | '),e.note||'',
+      e.energy||'',e.caffeineAt||'',(e.screensMin==null||e.screensMin==='')?'':e.screensMin].map(csvCell).join(','));
   });
   return {ok:true,text:lines.join('\r\n'),count:keys.length};
 }

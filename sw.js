@@ -6,7 +6,8 @@
 
 /* Etapa 1: sube la version con cada cambio. activate solo borra CacheStorage:
    nunca toca IndexedDB (sleeptrack_db) ni localStorage. */
-var CACHE='sleeptrack-v7';
+/* Etapa 2: nueva versión de caché; activate borra solo CacheStorage. */
+var CACHE='sleeptrack-v1.3.1';
 var VERSION=CACHE;
 var SCOPE=self.registration.scope;
 function abs(p){return new URL(p,SCOPE).href;}
