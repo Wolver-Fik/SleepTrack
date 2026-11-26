@@ -582,7 +582,7 @@ function doImport(){
   var txt=$('bk').value.trim();
   if(!txt){bmsg(L('backup.importEmpty'),true);return;}
   var r=S.importJSON(txt);
-  if(!r.ok){bmsg(storageMsg(r),true);return;}
+  if(!r.ok){bmsg(r.msgText||storageMsg(r),true);return;}
   setForm($('fDate').value||todayStr());render();
   bmsg(L('backup.importDone',{n:C('kpi.nights',r.count)}),false);
 }
@@ -723,6 +723,12 @@ function registerSW(){
 
 function init(){
   S.load();
+  /* La migracion a IndexedDB es asincrona: si cambio los datos, refresco la
+     interfaz sin alterar el estado que el usuario ya tenia en pantalla. */
+  window.addEventListener('sleeptrack:storage-ready',function(ev){
+    if(ev&&ev.detail&&ev.detail.changed){renderToday();render();}
+  });
+  if(S.whenReady)S.whenReady().catch(function(){});
   I.init();
   renderToday();
   I.onChange(function(){

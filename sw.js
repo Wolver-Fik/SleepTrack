@@ -4,7 +4,10 @@
 (function(){
 'use strict';
 
-var VERSION='sleeptrack-v6';
+/* Etapa 1: sube la version con cada cambio. activate solo borra CacheStorage:
+   nunca toca IndexedDB (sleeptrack_db) ni localStorage. */
+var CACHE='sleeptrack-v7';
+var VERSION=CACHE;
 var SCOPE=self.registration.scope;
 function abs(p){return new URL(p,SCOPE).href;}
 var INDEX=abs('./index.html');
@@ -29,7 +32,7 @@ self.addEventListener('install',function(ev){
 self.addEventListener('activate',function(ev){
   ev.waitUntil(
     caches.keys().then(function(keys){
-      return Promise.all(keys.filter(function(k){return k!==VERSION;}).map(function(k){return caches.delete(k);}));
+      return Promise.all(keys.filter(function(k){return k.indexOf('sleeptrack-')===0&&k!==VERSION;}).map(function(k){return caches.delete(k);}));
     }).then(function(){return self.clients.claim();})
   );
 });

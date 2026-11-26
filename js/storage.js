@@ -23,6 +23,134 @@ var state={entries:{},goal:8,custom:[]};
 var storageOK=true;
 var demoCache=null,demoDay='',demoOff=false;
 
+/* ---------- Capa IndexedDB (Etapa 1) ----------
+   IndexedDB es el almacen principal; localStorage se conserva como espejo
+   sincrono para que app.js no tenga que cambiar su API. Los archivos
+   (fotos, recortes, etc.) se guardan en el store 'files', sin el limite
+   de 5 MB de localStorage. */
+var DB_NAME='sleeptrack_db';
+var DB_VERSION=1;
+var SCHEMA_VERSION=1;
+var STORE_STATE='state';
+var STORE_FILES='files';
+var STATE_KEY='main';
+var dbPromise=null,idbReady=false,idbFailed=false,pendingWrite=false,localHadData=false;
+var initPromise=null,writeChain=Promise.resolve(),memoryBackup=null;
+
+function idbOpen(){
+  if(dbPromise)return dbPromise;
+  dbPromise=new Promise(function(resolve,reject){
+    if(!('indexedDB' in window)){reject(new Error('IndexedDB no disponible'));return;}
+    var req=indexedDB.open(DB_NAME,DB_VERSION);
+    req.onupgradeneeded=function(){
+      var db=req.result;
+      if(!db.objectStoreNames.contains(STORE_STATE))db.createObjectStore(STORE_STATE);
+      if(!db.objectStoreNames.contains(STORE_FILES))db.createObjectStore(STORE_FILES,{keyPath:'id'});
+    };
+    req.onsuccess=function(){idbReady=true;resolve(req.result);};
+    req.onerror=function(){idbFailed=true;reject(req.error||new Error('No se pudo abrir IndexedDB'));};
+    req.onblocked=function(){idbFailed=true;reject(new Error('IndexedDB bloqueada'));};
+  });
+  return dbPromise;
+}
+function idbRequest(db,store,mode,run){
+  return new Promise(function(resolve,reject){
+    var tx=db.transaction(store,mode),os=tx.objectStore(store),result;
+    try{result=run(os);}catch(e){reject(e);return;}
+    tx.oncomplete=function(){resolve(result&&result.result!==undefined?result.result:undefined);};
+    tx.onerror=function(){reject(tx.error||new Error('Error de IndexedDB'));};
+    tx.onabort=function(){reject(tx.error||new Error('Transaccion abortada'));};
+  });
+}
+function idbGet(store,key){
+  return idbOpen().then(function(db){return idbRequest(db,store,'readonly',function(os){return os.get(key);});});
+}
+function idbGetAll(store){
+  return idbOpen().then(function(db){return idbRequest(db,store,'readonly',function(os){return os.getAll();});});
+}
+function idbPut(store,key,value){
+  return idbOpen().then(function(db){
+    return idbRequest(db,store,'readwrite',function(os){
+      return key===undefined?os.put(value):os.put(value,key);
+    });
+  });
+}
+function idbDelete(store,key){
+  return idbOpen().then(function(db){return idbRequest(db,store,'readwrite',function(os){return os.delete(key);});});
+}
+function localSnapshot(){
+  var snap={};
+  try{[KEY,DEMO_OFF_KEY].forEach(function(k){var v=localStorage.getItem(k);if(v!==null)snap[k]=v;});}catch(e){}
+  return snap;
+}
+function stateData(){return {goal:state.goal,custom:state.custom,entries:state.entries};}
+function envelope(data){
+  return {schemaVersion:SCHEMA_VERSION,app:'sleeptrack',v:1,data:data,localStorage:localSnapshot(),updatedAt:new Date().toISOString()};
+}
+function writeIDB(data){
+  writeChain=writeChain.then(function(){
+    return idbPut(STORE_STATE,STATE_KEY,envelope(data));
+  }).catch(function(){idbFailed=true;});
+  return writeChain;
+}
+function applyData(d){
+  var c=sanitize(d),changed=false;
+  if(JSON.stringify(state.entries)!==JSON.stringify(c.entries)){state.entries=c.entries;changed=true;}
+  if(JSON.stringify(state.custom)!==JSON.stringify(c.custom)){state.custom=c.custom;changed=true;}
+  if(state.goal!==c.goal){state.goal=c.goal;changed=true;}
+  return changed;
+}
+function mergeData(local,remote,preferLocal){
+  var out={goal:(preferLocal&&local&&typeof local.goal==='number')?local.goal:(remote&&remote.goal)||8,custom:[],entries:{}};
+  var add=function(k,v){if(/^\d{4}-\d{2}-\d{2}$/.test(k)&&v&&typeof v==='object')out.entries[k]=v;};
+  Object.keys((remote&&remote.entries)||{}).forEach(function(k){add(k,remote.entries[k]);});
+  Object.keys((local&&local.entries)||{}).forEach(function(k){add(k,local.entries[k]);});
+  [((remote&&remote.custom)||[]),((local&&local.custom)||[])].forEach(function(list){
+    (Array.isArray(list)?list:[]).forEach(function(x){if(typeof x==='string'&&x&&out.custom.indexOf(x)<0)out.custom.push(x);});
+  });
+  if(preferLocal&&local&&typeof local.goal==='number')out.goal=local.goal;
+  return out;
+}
+function notifyReady(changed){
+  try{
+    window.dispatchEvent(new CustomEvent('sleeptrack:storage-ready',{detail:{changed:!!changed,fromIndexedDB:true}}));
+  }catch(e){}
+}
+function initIDB(){
+  if(initPromise)return initPromise;
+  initPromise=idbOpen().then(function(){
+    return idbGet(STORE_STATE,STATE_KEY);
+  }).then(function(rec){
+    var local=stateData(),merged=local;
+    if(rec){
+      var remote=(rec.schemaVersion&&rec.data)?rec.data:rec;
+      merged=mergeData(localHadData?local:null,remote,localHadData||pendingWrite);
+      var changed=applyData(merged);
+      persist();
+      notifyReady(changed);
+    }else{
+      // First run: migrate every localStorage record into IndexedDB.
+      writeIDB(local);
+      notifyReady(false);
+    }
+  }).catch(function(){
+    idbFailed=true;
+    notifyReady(false);
+  });
+  return initPromise;
+}
+function whenReady(){return initIDB();}
+/* Archivos/imagenes: se guardan en IndexedDB, nunca en localStorage. */
+function putFile(id,data,meta){
+  var rec={id:String(id),data:data,type:(meta&&meta.type)||'',name:(meta&&meta.name)||'',
+    size:typeof data==='string'?data.length:((data&&data.size)||0),schemaVersion:SCHEMA_VERSION,
+    createdAt:new Date().toISOString()};
+  return idbPut(STORE_FILES,undefined,rec);
+}
+function getFile(id){return idbGet(STORE_FILES,String(id));}
+function listFiles(){return idbGetAll(STORE_FILES);}
+function deleteFile(id){return idbDelete(STORE_FILES,String(id));}
+
 /* Utilidades internas de fecha/hora (las cuentas de la app viven en app.js) */
 function pad(n){return n<10?'0'+n:''+n;}
 function dstr(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
@@ -57,14 +185,19 @@ function sanitize(o){
 function load(){
   try{
     var raw=localStorage.getItem(KEY);
-    if(raw){var c=sanitize(JSON.parse(raw));state.entries=c.entries;state.goal=c.goal;state.custom=c.custom;}
+    if(raw){localHadData=true;var parsed=JSON.parse(raw),c=sanitize(parsed&&parsed.data?parsed.data:parsed);state.entries=c.entries;state.goal=c.goal;state.custom=c.custom;}
   }catch(e){}
   try{demoOff=localStorage.getItem(DEMO_OFF_KEY)==='1';}catch(e){}
   try{localStorage.setItem(KEY+'-t','1');localStorage.removeItem(KEY+'-t');storageOK=true;}catch(e){storageOK=false;}
+  /* Migracion automatica: localStorage -> IndexedDB, sin perder registros. */
+  initIDB();
 }
 function persist(){
-  try{localStorage.setItem(KEY,JSON.stringify({v:1,goal:state.goal,custom:state.custom,entries:state.entries}));storageOK=true;}
+  var payload={v:1,schemaVersion:SCHEMA_VERSION,app:'sleeptrack',goal:state.goal,custom:state.custom,entries:state.entries};
+  try{localStorage.setItem(KEY,JSON.stringify(payload));storageOK=true;}
   catch(e){storageOK=false;}
+  pendingWrite=true;
+  writeIDB({goal:state.goal,custom:state.custom,entries:state.entries});
 }
 function persistDemoOff(){
   try{localStorage.setItem(DEMO_OFF_KEY,'1');}catch(e){storageOK=false;}
@@ -124,9 +257,25 @@ function csvCell(v){
   var s=String(v==null?'':v);
   return /[",\r\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
 }
+function backupPayload(){
+  return {app:'sleeptrack',schemaVersion:SCHEMA_VERSION,v:1,exportedAt:new Date().toISOString(),
+    goal:state.goal,custom:state.custom,entries:state.entries};
+}
 function exportJSON(){
   if(!Object.keys(state.entries).length)return {ok:false,msg:'backup.exportNone'};
-  return {ok:true,text:JSON.stringify({v:1,goal:state.goal,custom:state.custom,entries:state.entries})};
+  return {ok:true,text:JSON.stringify(backupPayload())};
+}
+/* Validacion de origen y estructura antes de sobrescribir cualquier dato. */
+function validateBackup(o){
+  if(!o||typeof o!=='object'||Array.isArray(o))return {ok:false,msgText:'El archivo no contiene un respaldo válido.'};
+  if(o.app&&String(o.app).toLowerCase()!=='sleeptrack')return {ok:false,msgText:'Este respaldo pertenece a otra aplicación y no se importará.'};
+  var sv=o.schemaVersion==null?1:Number(o.schemaVersion);
+  if(!isFinite(sv)||sv<1||sv>SCHEMA_VERSION)return {ok:false,msgText:'La versión de esquema del respaldo no es compatible.'};
+  if(!o.entries||typeof o.entries!=='object'||Array.isArray(o.entries))return {ok:false,msgText:'El respaldo no tiene registros válidos.'};
+  var rawKeys=Object.keys(o.entries),clean=sanitize(o),keys=Object.keys(clean.entries);
+  if(!keys.length)return {ok:false,msg:'backup.importNoNights'};
+  if(keys.length!==rawKeys.length)return {ok:false,msgText:'El respaldo está incompleto o dañado: hay registros no válidos.'};
+  return {ok:true,data:clean,version:sv};
 }
 function exportCSV(){
   var keys=Object.keys(state.entries).sort();
@@ -141,15 +290,29 @@ function exportCSV(){
   return {ok:true,text:lines.join('\r\n'),count:keys.length};
 }
 function importJSON(text){
-  var o;
-  try{o=JSON.parse(String(text||'').trim());}catch(e){return {ok:false,msg:'backup.importInvalid'};}
-  var c=sanitize(o),keys=Object.keys(c.entries);
-  if(!keys.length)return {ok:false,msg:'backup.importNoNights'};
-  keys.forEach(function(k){state.entries[k]=c.entries[k];});
-  c.custom.forEach(function(x){if(state.custom.indexOf(x)<0&&BASE.indexOf(x)<0)state.custom.push(x);});
-  if(o&&typeof o.goal==='number')state.goal=c.goal;
-  persist();
-  return {ok:true,count:keys.length};
+  /* Respaldo temporal en memoria: si algo falla, se restaura sin tocar IndexedDB. */
+  memoryBackup={data:stateData(),demoOff:demoOff};
+  try{
+    var o=JSON.parse(String(text||'').trim()),v=validateBackup(o);
+    if(!v.ok)return {ok:false,msg:v.msg||'backup.importInvalid',msgText:v.msgText};
+    var keys=Object.keys(v.data.entries);
+    /* Restaurar reproduce el respaldo: no se conservan noches que el archivo
+       ya no contiene. Se muta el objeto vivo que usa app.js. */
+    state.entries=v.data.entries;
+    state.custom=v.data.custom.filter(function(x){return BASE.indexOf(x)<0;});
+    if(o&&typeof o.goal==='number')state.goal=v.data.goal;
+    persist();
+    return {ok:true,count:keys.length};
+  }catch(e){
+    if(memoryBackup){
+      state.entries=memoryBackup.data.entries;
+      state.custom=memoryBackup.data.custom;
+      state.goal=memoryBackup.data.goal;
+      demoOff=memoryBackup.demoOff;
+      persist();
+    }
+    return {ok:false,msg:'backup.importInvalid',msgText:'No se pudo importar el respaldo; tus datos siguen intactos.'};
+  }finally{memoryBackup=null;}
 }
 function wipe(){state.entries={};state.custom=[];persist();}
 
@@ -172,6 +335,16 @@ window.SleepStorage={
   exportJSON:exportJSON,
   exportCSV:exportCSV,
   importJSON:importJSON,
-  wipe:wipe
+  validateBackup:validateBackup,
+  wipe:wipe,
+  /* Etapa 1: almacenamiento durable y sin limite de 5 MB */
+  DB_NAME:DB_NAME,
+  SCHEMA_VERSION:SCHEMA_VERSION,
+  whenReady:whenReady,
+  isIndexedDBReady:function(){return idbReady&&!idbFailed;},
+  putFile:putFile,
+  getFile:getFile,
+  listFiles:listFiles,
+  deleteFile:deleteFile
 };
 })();
