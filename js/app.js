@@ -358,7 +358,9 @@ function insights(rs){
     var dt=avg(w7.map(function(r){return r.d;}))-avg(p7.map(function(r){return r.d;}));
     if(Math.abs(dt)>=15)ins(L('insights.trendLabel'),L(dt>0?'insights.trendMore':'insights.trendLess',{d:fmtDur(Math.abs(dt))}),dt>0?'good':'warn');
   }
-  var fr=r90.filter(function(r){var k=dow(r.date);return k===0||k===6;}),wk=r90.filter(function(r){var k=dow(r.date);return k!==0&&k!==6;});
+  /* La noche se clasifica por el día en que empezó: la del viernes que
+     termina en sábado cuenta como viernes, igual que en el resto de análisis. */
+  var fr=r90.filter(function(r){var k=dow(addDays(r.date,-1));return k===0||k===6;}),wk=r90.filter(function(r){var k=dow(addDays(r.date,-1));return k!==0&&k!==6;});
   if(fr.length>=2&&wk.length>=2){
     function mid(r){return bedN(r)+r.d/2;}
     var dm=avg(fr.map(mid))-avg(wk.map(mid));
@@ -440,8 +442,10 @@ function habitRows(rs){
   return list;
 }
 function renderEnergySummary(rs){
-  var win=inWin(rs,todayStr(),ui.range),all=(win.length?win:rs).filter(function(r){return r.energy>=1;});
-  if(!all.length){$('energySummary').innerHTML='<p class="empty" style="margin:0">'+L('corr.energyNeed')+'</p>';return;}
+  /* Sin retroceso al historial completo: si el período elegido no tiene
+     energía registrada, se indica en ese período y no se inventa promedio. */
+  var all=inWin(rs,todayStr(),ui.range).filter(function(r){return r.energy>=1;});
+  if(!all.length){$('energySummary').innerHTML='<p class="empty" style="margin:0">'+L('corr.energyNeedRange')+'</p>';return;}
   var a=avg(all.map(function(r){return r.energy;}));
   var h='<div class="en-sum-head"><span class="lab">'+L('corr.energyTitle')+'</span><b>'+num1(a)+' <small>/ 5</small></b><span>'+L('corr.energyN',{n:C('kpi.nights',all.length)})+'</span></div>';
   var g=state.goal*60;
@@ -648,8 +652,10 @@ function onSubmit(ev){
   var f=Object.keys(form.f).filter(function(k){return form.f[k];});
   state.entries[date]={bed:bed,wake:wake,q:form.q,aw:form.aw,f:f,note:$('fNote').value.trim().slice(0,140),
     energy:form.energy||'',caffeineAt:caf||'',screensMin:scr===null?'':scr};
-  S.persist();syncForm();render();
-  msg(L(S.storageOK()?'form.saved':'form.saveFail'),!S.storageOK());
+  /* El mensaje de guardado espera a IndexedDB: el estado en memoria ya cambió,
+     pero solo se confirma como guardado cuando la escritura se completa. */
+  S.persist().then(function(){msg(L('form.saved'),false);},function(){msg(L('form.saveFail'),true);});
+  syncForm();render();
 }
 
 /* ---------- Copia de seguridad ---------- */
@@ -683,10 +689,13 @@ function doExportCSV(){
 function doImport(){
   var txt=$('bk').value.trim();
   if(!txt){bmsg(L('backup.importEmpty'),true);return;}
-  var r=S.importJSON(txt);
-  if(!r.ok){bmsg(r.msgText||storageMsg(r),true);return;}
-  setForm($('fDate').value||todayStr());render();
-  bmsg(L('backup.importDone',{n:C('kpi.nights',r.count)}),false);
+  /* importJSON confirma la persistencia antes de devolver ok; mientras tanto
+     la interfaz no anuncia una restauración que aún no está guardada. */
+  S.importJSON(txt).then(function(r){
+    if(!r.ok){bmsg(r.msgText||storageMsg(r),true);return;}
+    setForm($('fDate').value||todayStr());render();
+    bmsg(L('backup.importDone',{n:C('kpi.nights',r.count)}),false);
+  }).catch(function(){bmsg(L('backup.importInvalid'),true);});
 }
 function doWipe(){
   if(!ui.wipe){
@@ -733,8 +742,8 @@ function bind(){
   });
   $('goHistory').addEventListener('click',function(){setTab('history');});
   $('demoOffBtn').addEventListener('click',doDemoOff);
-  $('goalMinus').addEventListener('click',function(){state.goal=Math.max(5,state.goal-0.5);S.persist();render();updateDur();});
-  $('goalPlus').addEventListener('click',function(){state.goal=Math.min(10,state.goal+0.5);S.persist();render();updateDur();});
+  $('goalMinus').addEventListener('click',function(){state.goal=Math.max(5,state.goal-0.5);S.persist().catch(function(){});render();updateDur();});
+  $('goalPlus').addEventListener('click',function(){state.goal=Math.min(10,state.goal+0.5);S.persist().catch(function(){});render();updateDur();});
   $('form').addEventListener('submit',onSubmit);
   $('fBed').addEventListener('input',updateDur);
   $('fWake').addEventListener('input',updateDur);
@@ -792,7 +801,7 @@ function bind(){
     var d=ev.target.closest('button[data-del]');if(!d)return;
     var date=d.getAttribute('data-del');
     if(ui.confirmDel===date){
-      delete state.entries[date];ui.confirmDel=null;S.persist();
+      delete state.entries[date];ui.confirmDel=null;S.persist().catch(function(){});
       if(ui.calSel===date)ui.calSel='';
       if($('fDate').value===date)setForm(date);
       render();

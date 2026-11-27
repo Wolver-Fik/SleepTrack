@@ -4,10 +4,9 @@
 (function(){
 'use strict';
 
-/* Etapa 1: sube la version con cada cambio. activate solo borra CacheStorage:
-   nunca toca IndexedDB (sleeptrack_db) ni localStorage. */
-/* Etapa 2: nueva versión de caché; activate borra solo CacheStorage. */
-var CACHE='sleeptrack-v1.3.2';
+/* Sube la versión con cada cambio: fuerza la precarga y limpia la caché anterior.
+   activate solo borra CacheStorage, nunca IndexedDB ni localStorage. */
+var CACHE='sleeptrack-v1.3.3';
 var VERSION=CACHE;
 var SCOPE=self.registration.scope;
 function abs(p){return new URL(p,SCOPE).href;}
@@ -38,9 +37,10 @@ self.addEventListener('activate',function(ev){
   );
 });
 
+/* Devuelve la escritura para que el evento la incluya en waitUntil. */
 function put(url,response){
-  if(!response||!response.ok||response.type==='opaque')return;
-  caches.open(VERSION).then(function(c){c.put(url,response.clone());}).catch(function(){});
+  if(!response||!response.ok||response.type==='opaque')return Promise.resolve();
+  return caches.open(VERSION).then(function(c){return c.put(url,response.clone());}).catch(function(){});
 }
 
 self.addEventListener('fetch',function(ev){
@@ -51,29 +51,29 @@ self.addEventListener('fetch',function(ev){
 
   var isHTML=req.mode==='navigate'||String(req.headers.get('accept')||'').indexOf('text/html')>=0;
   if(isHTML){
-    ev.respondWith(
-      fetch(req).then(function(res){
-        put(INDEX,res);
-        return res;
-      }).catch(function(){
-        return caches.match(INDEX).then(function(r){return r||caches.match(CORE[0]);});
-      })
-    );
+    var net=fetch(req);
+    /* La respuesta y su copia en caché comparten la misma petición; la
+       escritura se espera con waitUntil para que no se interrumpa. */
+    ev.waitUntil(net.then(function(res){return put(INDEX,res);}).catch(function(){}));
+    ev.respondWith(net.catch(function(){
+      return caches.match(INDEX).then(function(r){return r||caches.match(CORE[0]);});
+    }));
     return;
   }
 
-  ev.respondWith(
-    caches.match(req).then(function(cached){
-      if(cached){
-        fetch(req).then(function(res){put(req.url,res);}).catch(function(){});
-        return cached;
-      }
-      return fetch(req).then(function(res){
-        put(req.url,res);
-        return res;
-      });
-    })
-  );
+  var update=null;
+  var cachedResponse=caches.match(req).then(function(cached){
+    if(cached){
+      update=fetch(req).then(function(res){return put(req.url,res);}).catch(function(){});
+      return cached;
+    }
+    return fetch(req).then(function(res){
+      update=put(req.url,res);
+      return res;
+    });
+  });
+  ev.respondWith(cachedResponse);
+  ev.waitUntil(cachedResponse.then(function(){return update;}).catch(function(){}));
 });
 
 self.addEventListener('message',function(ev){

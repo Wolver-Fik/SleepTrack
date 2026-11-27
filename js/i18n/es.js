@@ -127,6 +127,7 @@ window.SleepI18n.register('es',{
   'corr.energyTitle':'Energía al despertar · promedio',
   'corr.energyN':'{n} con este dato',
   'corr.energyNeed':'Registra la energía al despertar para ver el promedio y su relación con la duración del sueño.',
+  'corr.energyNeedRange':'No hay registros de energía en el período seleccionado. Regístrala en ese período para ver el promedio.',
   'corr.energyGoal':'Al alcanzar tu meta de {goal}, la energía media es {a}/5 ({n1}); sin alcanzarla, {b}/5 ({n2}).',
   'corr.energyDurMore':'Con energía alta (4–5) dormiste {d} más que con energía baja (1–2).',
   'corr.energyDurLess':'Con energía alta (4–5) dormiste {d} menos que con energía baja (1–2).',

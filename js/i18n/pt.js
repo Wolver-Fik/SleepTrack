@@ -127,6 +127,7 @@ window.SleepI18n.register('pt',{
   'corr.energyTitle':'Energia ao acordar · média',
   'corr.energyN':'{n} com este dado',
   'corr.energyNeed':'Regista a energia ao acordar para ver a média e a relação com a duração do sono.',
+  'corr.energyNeedRange':'Não há registos de energia no período selecionado. Regista-a nesse período para ver a média.',
   'corr.energyGoal':'Nas noites em que atingiste a tua meta de {goal}, a energia média foi {a}/5 ({n1}); sem a atingir, {b}/5 ({n2}).',
   'corr.energyDurMore':'Nas noites com energia alta (4–5) dormiste {d} a mais do que nas de energia baixa (1–2).',
   'corr.energyDurLess':'Nas noites com energia alta (4–5) dormiste {d} a menos do que nas de energia baixa (1–2).',

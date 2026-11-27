@@ -127,6 +127,7 @@ window.SleepI18n.register('en',{
   'corr.energyTitle':'Wake-up energy · average',
   'corr.energyN':'{n} with this data',
   'corr.energyNeed':'Log wake-up energy to see the average and how it relates to sleep duration.',
+  'corr.energyNeedRange':'No energy records in the selected period. Log wake-up energy in that period to see the average.',
   'corr.energyGoal':'On nights when you reached your {goal} goal, average energy was {a}/5 ({n1}); without reaching it, {b}/5 ({n2}).',
   'corr.energyDurMore':'On high-energy nights (4–5) you slept {d} longer than on low-energy nights (1–2).',
   'corr.energyDurLess':'On high-energy nights (4–5) you slept {d} less than on low-energy nights (1–2).',

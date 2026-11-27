@@ -127,6 +127,7 @@ window.SleepI18n.register('fr',{
   'corr.energyTitle':'Énergie au réveil · moyenne',
   'corr.energyN':'{n} avec cette donnée',
   'corr.energyNeed':'Notez l’énergie au réveil pour voir la moyenne et son lien avec la durée du sommeil.',
+  'corr.energyNeedRange':'Aucune donnée d’énergie sur la période sélectionnée. Notez-la sur cette période pour voir la moyenne.',
   'corr.energyGoal':'Les nuits où vous avez atteint votre objectif de {goal}, l’énergie moyenne était de {a}/5 ({n1}) ; sinon, {b}/5 ({n2}).',
   'corr.energyDurMore':'Les nuits avec une énergie élevée (4–5) : vous avez dormi {d} de plus que lors des nuits à énergie faible (1–2).',
   'corr.energyDurLess':'Les nuits avec une énergie élevée (4–5) : vous avez dormi {d} de moins que lors des nuits à énergie faible (1–2).',

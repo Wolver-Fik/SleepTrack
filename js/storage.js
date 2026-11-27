@@ -23,11 +23,10 @@ var state={entries:{},goal:8,custom:[]};
 var storageOK=true;
 var demoCache=null,demoDay='',demoOff=false;
 
-/* ---------- Capa IndexedDB (Etapa 1) ----------
-   IndexedDB es el almacen principal; localStorage se conserva como espejo
-   sincrono para que app.js no tenga que cambiar su API. Los archivos
-   (fotos, recortes, etc.) se guardan en el store 'files', sin el limite
-   de 5 MB de localStorage. */
+/* ---------- Capa IndexedDB ----------
+   IndexedDB es el almacen principal de noches, meta y factores; localStorage
+   solo conserva la bandera auxiliar de demostración. Los archivos (fotos,
+   recortes, etc.) se guardan en el store 'files', sin el limite de 5 MB. */
 var DB_NAME='sleeptrack_db';
 var DB_VERSION=1;
 /* v2 añade energy, caffeineAt y screensMin; los respaldos v1 siguen siendo válidos. */
@@ -35,8 +34,8 @@ var SCHEMA_VERSION=2;
 var STORE_STATE='state';
 var STORE_FILES='files';
 var STATE_KEY='main';
-var dbPromise=null,idbReady=false,idbFailed=false,pendingWrite=false,localHadData=false;
-var initPromise=null,writeChain=Promise.resolve(),memoryBackup=null;
+var dbPromise=null,idbReady=false,idbFailed=false,dbOpenFailed=false,pendingWrite=false,localHadData=false;
+var initPromise=null,writeChain=Promise.resolve(),pendingWrites=0,persisted=true;
 
 /* IndexedDB es la única fuente de verdad; `state` es la copia en memoria que
    usa la API síncrona. Los fallos reales se notifican con `onStorageError`. */
@@ -52,24 +51,43 @@ function emitStorageError(err,origin){
     try{var ev=document.createEvent('CustomEvent');ev.initCustomEvent('onStorageError',false,false,lastStorageError);window.dispatchEvent(ev)}catch(e2){}
   }
 }
-function clearStorageError(){storageErrorActive=false;lastStorageError=null;}
-function persistStatus(){return !lastStorageError&&!idbFailed;}
+function clearStorageError(){
+  storageErrorActive=false;lastStorageError=null;
+  /* Una escritura confirmada invalida cualquier fallo anterior. */
+  idbFailed=false;
+}
+function persistStatus(){
+  /* Si la apertura inicial falló, se descarta la promesa rechazada para que
+     el siguiente idbOpen() pueda intentarlo de nuevo. */
+  if(dbOpenFailed){dbPromise=null;dbOpenFailed=false;idbReady=false;}
+  return !lastStorageError&&!idbFailed&&persisted;
+}
+/* `state` cambia en memoria al instante; `persisted` solo cambia cuando
+   IndexedDB confirma (o rechaza) la escritura. */
+function isPersisted(){return persisted;}
 
 function idbOpen(){
   if(dbPromise)return dbPromise;
-  dbPromise=new Promise(function(resolve,reject){
-    if(!('indexedDB' in window)){reject(new Error('IndexedDB no disponible'));return;}
+  function unavailable(msg){
+    idbFailed=true;dbOpenFailed=true;
+    return Promise.reject(new Error(msg));
+  }
+  if(!('indexedDB' in window))return unavailable('IndexedDB no disponible');
+  var p=new Promise(function(resolve,reject){
     var req=indexedDB.open(DB_NAME,DB_VERSION);
     req.onupgradeneeded=function(){
       var db=req.result;
       if(!db.objectStoreNames.contains(STORE_STATE))db.createObjectStore(STORE_STATE);
       if(!db.objectStoreNames.contains(STORE_FILES))db.createObjectStore(STORE_FILES,{keyPath:'id'});
     };
-    req.onsuccess=function(){idbReady=true;resolve(req.result);};
-    req.onerror=function(){idbFailed=true;reject(req.error||new Error('No se pudo abrir IndexedDB'));};
-    req.onblocked=function(){idbFailed=true;reject(new Error('IndexedDB bloqueada'));};
+    req.onsuccess=function(){idbReady=true;dbOpenFailed=false;resolve(req.result);};
+    req.onerror=function(){idbFailed=true;dbOpenFailed=true;reject(req.error||new Error('No se pudo abrir IndexedDB'));};
+    req.onblocked=function(){idbFailed=true;dbOpenFailed=true;reject(new Error('IndexedDB bloqueada'));};
   });
-  return dbPromise;
+  dbPromise=p;
+  /* Se marca como manejada y se libera: un fallo inicial no bloquea reintentos. */
+  p.catch(function(){if(dbPromise===p){dbPromise=null;idbReady=false;dbOpenFailed=true;}});
+  return p;
 }
 function idbRequest(db,store,mode,run){
   return new Promise(function(resolve,reject){
@@ -103,7 +121,9 @@ function localSnapshot(){
   return snap;
 }
 function pruneLocalState(){try{localStorage.removeItem(KEY)}catch(e){}}
-function stateData(){return {goal:state.goal,custom:state.custom,entries:state.entries};}
+/* Copia: lo que se escribe (y lo que se puede revertir) no debe cambiar si
+   el usuario sigue editando mientras la transacción está en curso. */
+function stateData(){return {goal:state.goal,custom:state.custom.slice(),entries:JSON.parse(JSON.stringify(state.entries))};}
 function envelope(data){
   return {schemaVersion:SCHEMA_VERSION,app:'sleeptrack',v:1,data:data,localStorage:localSnapshot(),updatedAt:new Date().toISOString()};
 }
@@ -114,8 +134,11 @@ function writeIDB(data){
   writeChain=attempt.catch(function(){});
   return attempt.then(function(){
     clearStorageError();storageOK=true;
+    return true;
   },function(e){
     idbFailed=true;storageOK=false;emitStorageError(e,'IndexedDB');
+    /* La transacción falló: el llamador debe poder detectarlo. */
+    throw e;
   });
 }
 function applyData(d){
@@ -127,7 +150,7 @@ function applyData(d){
 }
 function mergeData(local,remote,preferLocal){
   var out={goal:(preferLocal&&local&&typeof local.goal==='number')?local.goal:(remote&&remote.goal)||8,custom:[],entries:{}};
-  var add=function(k,v){if(/^\d{4}-\d{2}-\d{2}$/.test(k)&&v&&typeof v==='object')out.entries[k]=v;};
+  var add=function(k,v){if(validDate(k)&&v&&typeof v==='object')out.entries[k]=v;};
   Object.keys((remote&&remote.entries)||{}).forEach(function(k){add(k,remote.entries[k]);});
   Object.keys((local&&local.entries)||{}).forEach(function(k){add(k,local.entries[k]);});
   [((remote&&remote.custom)||[]),((local&&local.custom)||[])].forEach(function(list){
@@ -141,27 +164,34 @@ function notifyReady(changed){
     window.dispatchEvent(new CustomEvent('sleeptrack:storage-ready',{detail:{changed:!!changed,fromIndexedDB:true}}));
   }catch(e){}
 }
-function initIDB(){
+async function initIDB(){
   if(initPromise)return initPromise;
-  initPromise=idbOpen().then(function(){
-    return idbGet(STORE_STATE,STATE_KEY);
-  }).then(function(rec){
-    if(rec){
-      /* IndexedDB manda: localStorage no se fusiona una vez ya migró. */
-      var remote=(rec.schemaVersion&&rec.data)?rec.data:rec;
-      var changed=applyData(remote);
-      pruneLocalState();
-      notifyReady(changed);
-      return;
+  initPromise=(async function(){
+    try{
+      await idbOpen();
+      var rec=await idbGet(STORE_STATE,STATE_KEY);
+      if(rec){
+        /* IndexedDB manda: localStorage no se fusiona una vez ya migró. */
+        var remote=(rec.schemaVersion&&rec.data)?rec.data:rec;
+        var changed=applyData(remote);
+        pruneLocalState();
+        notifyReady(changed);
+        return;
+      }
+      /* Primer arranque: solo se retira la clave pesada de localStorage
+         cuando IndexedDB confirma que ya guardó el estado migrado. */
+      try{
+        await writeIDB(stateData());
+        pruneLocalState();
+      }catch(e){
+        /* Si falla, localStorage conserva los datos como respaldo. */
+      }
+      notifyReady(false);
+    }catch(e){
+      idbFailed=true;storageOK=false;persisted=false;emitStorageError(e,'IndexedDB (init)');
+      notifyReady(false);
     }
-    /* Primer arranque: migra una sola vez desde localStorage y limpia la
-       clave pesada en cuanto IndexedDB tiene el estado. */
-    writeIDB(stateData()).then(function(){pruneLocalState();});
-    notifyReady(false);
-  }).catch(function(e){
-    idbFailed=true;storageOK=false;emitStorageError(e,'IndexedDB (init)');
-    notifyReady(false);
-  });
+  })();
   return initPromise;
 }
 function whenReady(){return initIDB();}
@@ -183,6 +213,14 @@ function pdate(s){var p=s.split('-');return new Date(+p[0],+p[1]-1,+p[2],12);}
 function addDays(s,n){var d=pdate(s);d.setDate(d.getDate()+n);return dstr(d);}
 function todayStr(){return dstr(new Date());}
 function dow(s){return pdate(s).getDay();}
+/* Comprueba día real (incluye bisiestos): 2026-02-30 y 2026-99-99 se rechazan. */
+function validDate(s){
+  if(typeof s!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(s))return false;
+  var p=s.split('-'),y=+p[0],m=+p[1],d=+p[2];
+  if(m<1||m>12||d<1||d>31)return false;
+  var dt=new Date(0);dt.setFullYear(y,m-1,d,12,0,0,0);
+  return dt.getFullYear()===y&&dt.getMonth()===m-1&&dt.getDate()===d;
+}
 function tmin(t){var p=t.split(':');return (+p[0])*60+(+p[1]);}
 function tfmt(m){m=((Math.round(m)%1440)+1440)%1440;return pad(Math.floor(m/60))+':'+pad(m%60);}
 function validT(t){return typeof t==='string'&&/^\d{2}:\d{2}$/.test(t)&&+t.slice(0,2)<24&&+t.slice(3)<60;}
@@ -196,7 +234,7 @@ function sanitize(o){
   if(Array.isArray(o.custom))out.custom=o.custom.filter(function(x){return typeof x==='string'&&x.trim()&&x.length<=24;}).slice(0,12).map(function(x){var v=x.trim();return LEGACY[v]||v;});
   var src=(o.entries&&typeof o.entries==='object')?o.entries:{};
   Object.keys(src).forEach(function(k){
-    if(!/^\d{4}-\d{2}-\d{2}$/.test(k))return;
+    if(!validDate(k))return;
     var e=src[k];if(!e||typeof e!=='object')return;
     if(!validT(e.bed)||!validT(e.wake))return;
     var q=Math.round(+e.q);if(!(q>=1&&q<=5))return;
@@ -227,9 +265,22 @@ function load(){
   initIDB();
 }
 function persist(){
-  pendingWrite=true;
-  /* La escritura principal es IndexedDB: no depende de la cuota de localStorage. */
-  writeIDB(stateData());
+  pendingWrite=true;pendingWrites++;persisted=false;
+  /* La escritura principal es IndexedDB: no depende de la cuota de localStorage.
+     Se captura el estado en memoria ahora; `persisted` solo se confirma cuando
+     la transacción termina, y el rechazo llega explícitamente al llamador. */
+  var data=stateData();
+  return writeIDB(data).then(function(){
+    pendingWrites=Math.max(0,pendingWrites-1);
+    pendingWrite=pendingWrites>0;
+    if(!pendingWrites){persisted=true;storageOK=true;}
+    return true;
+  },function(e){
+    pendingWrites=Math.max(0,pendingWrites-1);
+    pendingWrite=pendingWrites>0;
+    persisted=false;storageOK=false;
+    throw e;
+  });
 }
 function persistDemoOff(){
   /* Bandera ligera; un fallo aquí no invalida el guardado en IndexedDB. */
@@ -274,14 +325,14 @@ function isDemo(){return !demoOff&&Object.keys(state.entries).length===0;}
 function entries(){return isDemo()?demo():state.entries;}
 
 /* ---------- Meta y factores personalizados ---------- */
-function setGoal(v){state.goal=Math.round(Math.max(4,Math.min(12,+v))*2)/2;persist();}
+function setGoal(v){state.goal=Math.round(Math.max(4,Math.min(12,+v))*2)/2;persist().catch(function(){});}
 function addCustom(v){
   v=String(v||'').trim().slice(0,24);
   if(!v)return false;
-  if(BASE.indexOf(v)<0&&state.custom.indexOf(v)<0){state.custom.push(v);persist();}
+  if(BASE.indexOf(v)<0&&state.custom.indexOf(v)<0){state.custom.push(v);persist().catch(function(){});}
   return true;
 }
-function removeCustom(v){state.custom=state.custom.filter(function(c){return c!==v;});persist();}
+function removeCustom(v){state.custom=state.custom.filter(function(c){return c!==v;});persist().catch(function(){});}
 
 /* ---------- Etiquetas de factores ---------- */
 function factorLabel(f){
@@ -293,6 +344,8 @@ function factorLabel(f){
 /* ---------- Copias de seguridad ---------- */
 function csvCell(v){
   var s=String(v==null?'':v);
+  /* Evita que hojas de cálculo interpreten el texto como fórmula. */
+  if(/^[=+\-@\t\r]/.test(s))s="'"+s;
   return /[",\r\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
 }
 function backupPayload(){
@@ -312,9 +365,12 @@ function validateBackup(o){
   var sv=o.schemaVersion==null?1:Number(o.schemaVersion);
   if(!isFinite(sv)||sv<1||sv>SCHEMA_VERSION)return {ok:false,msgText:'La versión de esquema del respaldo no es compatible.'};
   if(!o.entries||typeof o.entries!=='object'||Array.isArray(o.entries))return {ok:false,msgText:'El respaldo no tiene registros válidos.'};
+  var rawKeys=Object.keys(o.entries);
+  /* Fecha real, no solo formato: rechaza 2026-99-99 o 2026-02-30. */
+  if(rawKeys.some(function(k){return !validDate(k);}))return {ok:false,msgText:'El respaldo contiene fechas no válidas.'};
   /* sanitize valida también los campos opcionales de la Etapa 2 (energía,
      cafeína y pantallas) sin descartar respaldos anteriores que no los tenían. */
-  var rawKeys=Object.keys(o.entries),clean=sanitize(o),keys=Object.keys(clean.entries);
+  var clean=sanitize(o),keys=Object.keys(clean.entries);
   if(!keys.length)return {ok:false,msg:'backup.importNoNights'};
   if(keys.length!==rawKeys.length)return {ok:false,msgText:'El respaldo está incompleto o dañado: hay registros no válidos.'};
   return {ok:true,data:clean,version:sv};
@@ -333,31 +389,44 @@ function exportCSV(){
   return {ok:true,text:lines.join('\r\n'),count:keys.length};
 }
 function importJSON(text){
-  /* Respaldo temporal en memoria: si algo falla, se restaura sin tocar IndexedDB. */
-  memoryBackup={data:stateData(),demoOff:demoOff};
-  try{
-    var o=JSON.parse(String(text||'').trim()),v=validateBackup(o);
-    if(!v.ok)return {ok:false,msg:v.msg||'backup.importInvalid',msgText:v.msgText};
+  /* Copia en memoria del estado anterior: se conserva hasta saber que
+     IndexedDB confirmó la importación. */
+  var snapshot={data:stateData(),demoOff:demoOff};
+  function restore(){
+    state.entries=snapshot.data.entries;
+    state.custom=snapshot.data.custom;
+    state.goal=snapshot.data.goal;
+    demoOff=snapshot.demoOff;
+    /* Se intenta dejar IndexedDB coherente con el estado restaurado. */
+    return persist().catch(function(){});
+  }
+  return new Promise(function(resolve){
+    var o,v;
+    try{
+      o=JSON.parse(String(text||'').trim());
+      v=validateBackup(o);
+      if(!v.ok){resolve({ok:false,msg:v.msg||'backup.importInvalid',msgText:v.msgText});return;}
+    }catch(e){
+      resolve({ok:false,msg:'backup.importInvalid',msgText:'No se pudo importar el respaldo; tus datos siguen intactos.'});
+      return;
+    }
     var keys=Object.keys(v.data.entries);
     /* Restaurar reproduce el respaldo: no se conservan noches que el archivo
        ya no contiene. Se muta el objeto vivo que usa app.js. */
     state.entries=v.data.entries;
     state.custom=v.data.custom.filter(function(x){return BASE.indexOf(x)<0;});
     if(o&&typeof o.goal==='number')state.goal=v.data.goal;
-    persist();
-    return {ok:true,count:keys.length};
-  }catch(e){
-    if(memoryBackup){
-      state.entries=memoryBackup.data.entries;
-      state.custom=memoryBackup.data.custom;
-      state.goal=memoryBackup.data.goal;
-      demoOff=memoryBackup.demoOff;
-      persist();
-    }
-    return {ok:false,msg:'backup.importInvalid',msgText:'No se pudo importar el respaldo; tus datos siguen intactos.'};
-  }finally{memoryBackup=null;}
+    /* No se anuncia éxito hasta que la escritura en IndexedDB se confirma. */
+    persist().then(function(){
+      resolve({ok:true,count:keys.length});
+    },function(){
+      restore().then(function(){
+        resolve({ok:false,msg:'backup.importInvalid',msgText:'No se pudo guardar el respaldo importado; tus datos siguen intactos.'});
+      });
+    });
+  });
 }
-function wipe(){state.entries={};state.custom=[];persist();}
+function wipe(){state.entries={};state.custom=[];persist().catch(function(){});}
 
 /* Precarga síncrona: solo alimenta la migración inicial a IndexedDB; la
    fuente de verdad sigue siendo el registro de IndexedDB. */
@@ -389,6 +458,8 @@ window.SleepStorage={
   SCHEMA_VERSION:SCHEMA_VERSION,
   whenReady:whenReady,
   isIndexedDBReady:function(){return idbReady&&!idbFailed;},
+  /* Diferencia entre estado en memoria y estado ya persistido. */
+  isPersisted:isPersisted,
   /* Fallo real de persistencia: callback y evento `onStorageError`. */
   STORAGE_ERROR_MESSAGE:STORAGE_ERROR_MESSAGE,
   get onStorageError(){return storageErrorHandler},

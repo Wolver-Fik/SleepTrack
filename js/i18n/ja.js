@@ -127,6 +127,7 @@ window.SleepI18n.register('ja',{
   'corr.energyTitle':'起床時のエネルギー · 平均',
   'corr.energyN':'{n} の記録あり',
   'corr.energyNeed':'起床時のエネルギーを記録すると、平均と睡眠時間との関係が見られます。',
+  'corr.energyNeedRange':'選択した期間にはエネルギーの記録がありません。その期間に記録すると平均を表示できます。',
   'corr.energyGoal':'目標 {goal} を達成した夜は平均 {a}/5（{n1}）、達成しなかった夜は {b}/5（{n2}）でした。',
   'corr.energyDurMore':'エネルギーが高い夜（4〜5）は、低い夜（1〜2）より {d} 多く眠りました。',
   'corr.energyDurLess':'エネルギーが高い夜（4〜5）は、低い夜（1〜2）より {d} 少なく眠りました。',

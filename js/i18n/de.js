@@ -127,6 +127,7 @@ window.SleepI18n.register('de',{
   'corr.energyTitle':'Energie beim Aufwachen · Durchschnitt',
   'corr.energyN':'{n} mit diesem Wert',
   'corr.energyNeed':'Trage die Energie beim Aufwachen ein, um den Durchschnitt und den Zusammenhang mit der Schlafdauer zu sehen.',
+  'corr.energyNeedRange':'Für den gewählten Zeitraum liegen keine Energiewerte vor. Trage sie in diesem Zeitraum ein, um den Durchschnitt zu sehen.',
   'corr.energyGoal':'In Nächten, in denen du dein Ziel von {goal} erreicht hast, lag die Energie bei {a}/5 ({n1}); ohne Zielerreichung bei {b}/5 ({n2}).',
   'corr.energyDurMore':'An Tagen mit hoher Energie (4–5) hast du {d} länger geschlafen als an Tagen mit niedriger Energie (1–2).',
   'corr.energyDurLess':'An Tagen mit hoher Energie (4–5) hast du {d} kürzer geschlafen als an Tagen mit niedriger Energie (1–2).',

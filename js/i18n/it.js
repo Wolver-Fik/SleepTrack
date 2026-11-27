@@ -127,6 +127,7 @@ window.SleepI18n.register('it',{
   'corr.energyTitle':'Energia al risveglio · media',
   'corr.energyN':'{n} con questo dato',
   'corr.energyNeed':'Registra l’energia al risveglio per vedere la media e il legame con la durata del sonno.',
+  'corr.energyNeedRange':'Nessun dato sull’energia nel periodo selezionato. Registralo in quel periodo per vedere la media.',
   'corr.energyGoal':'Nelle notti in cui hai raggiunto l’obiettivo di {goal}, l’energia media era {a}/5 ({n1}); senza raggiungerlo, {b}/5 ({n2}).',
   'corr.energyDurMore':'Nelle notti con energia alta (4–5) hai dormito {d} in più rispetto a quelle con energia bassa (1–2).',
   'corr.energyDurLess':'Nelle notti con energia alta (4–5) hai dormito {d} in meno rispetto a quelle con energia bassa (1–2).',
