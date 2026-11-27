@@ -4,13 +4,16 @@
 (function(){
 'use strict';
 
-/* Sube la versión con cada cambio: fuerza la precarga y limpia la caché anterior.
-   activate solo borra CacheStorage, nunca IndexedDB ni localStorage. */
-var CACHE='sleeptrack-v1.3.3';
+/* Sube la versión con cada cambio (la misma cadena que usa js/app.js al
+   registrar './sw.js?v=...'). Fuerza la precarga y limpia solo CacheStorage;
+   nunca toca IndexedDB (sleeptrack_db) ni localStorage. */
+var CACHE='sleeptrack-v1.4.0';
 var VERSION=CACHE;
 var SCOPE=self.registration.scope;
 function abs(p){return new URL(p,SCOPE).href;}
 var INDEX=abs('./index.html');
+/* Todas las rutas son relativas a la subruta de despliegue (/SleepTrack/).
+   Cada archivo existe en el repositorio con exactamente este nombre. */
 var CORE=[
   './','./index.html','./manifest.webmanifest','./css/styles.css',
   './js/i18n/i18n.js','./js/i18n/en.js','./js/i18n/es.js',
@@ -20,12 +23,13 @@ var CORE=[
   './icons/icon.svg','./icons/icon-180.png','./icons/icon-192.png','./icons/icon-512.png'
 ].map(abs);
 
+/* Si falla una sola precarga, NO se activa: mantener el service worker anterior
+   (y su caché) es más seguro que instalar una caché vacía y borrar la buena. */
 self.addEventListener('install',function(ev){
   ev.waitUntil(
     caches.open(VERSION)
       .then(function(c){return c.addAll(CORE);})
       .then(function(){return self.skipWaiting();})
-      .catch(function(){return self.skipWaiting();})
   );
 });
 
@@ -37,10 +41,22 @@ self.addEventListener('activate',function(ev){
   );
 });
 
-/* Devuelve la escritura para que el evento la incluya en waitUntil. */
+/* Devuelve la escritura para que el evento la incluya en waitUntil. El clone
+   se toma aquí, antes de que la respuesta se entregue a la página. */
 function put(url,response){
   if(!response||!response.ok||response.type==='opaque')return Promise.resolve();
   return caches.open(VERSION).then(function(c){return c.put(url,response.clone());}).catch(function(){});
+}
+
+/* Shell offline para cualquier navegación: el index.html precargado, la
+   raíz del scope (start_url "./") y, como último recurso, CORE[0]. */
+function offlineShell(){
+  return caches.match(INDEX,{ignoreSearch:true}).then(function(r){
+    if(r)return r;
+    return caches.match(abs('./'),{ignoreSearch:true}).then(function(r2){
+      return r2||caches.match(CORE[0],{ignoreSearch:true});
+    });
+  });
 }
 
 self.addEventListener('fetch',function(ev){
@@ -49,34 +65,40 @@ self.addEventListener('fetch',function(ev){
   var url=new URL(req.url);
   if(url.origin!==self.location.origin)return;
 
-  var isHTML=req.mode==='navigate'||String(req.headers.get('accept')||'').indexOf('text/html')>=0;
+  var isHTML=req.mode==='navigate'||req.destination==='document'||
+    String(req.headers.get('accept')||'').indexOf('text/html')>=0;
+  var cacheWrite=Promise.resolve();
+  var responsePromise;
+
   if(isHTML){
-    var net=fetch(req);
-    /* La respuesta y su copia en caché comparten la misma petición; la
-       escritura se espera con waitUntil para que no se interrumpa. */
-    ev.waitUntil(net.then(function(res){return put(INDEX,res);}).catch(function(){}));
-    ev.respondWith(net.catch(function(){
-      return caches.match(INDEX).then(function(r){return r||caches.match(CORE[0]);});
-    }));
-    return;
+    responsePromise=fetch(req).then(function(res){
+      cacheWrite=put(INDEX,res);
+      return res;
+    }).catch(function(){return offlineShell();});
+  }else{
+    responsePromise=caches.match(req).then(function(cached){
+      if(cached){
+        cacheWrite=fetch(req).then(function(res){return put(req.url,res);}).catch(function(){});
+        return cached;
+      }
+      return fetch(req).then(function(res){
+        cacheWrite=put(req.url,res).catch(function(){});
+        return res;
+      });
+    });
   }
 
-  var update=null;
-  var cachedResponse=caches.match(req).then(function(cached){
-    if(cached){
-      update=fetch(req).then(function(res){return put(req.url,res);}).catch(function(){});
-      return cached;
-    }
-    return fetch(req).then(function(res){
-      update=put(req.url,res);
-      return res;
-    });
-  });
-  ev.respondWith(cachedResponse);
-  ev.waitUntil(cachedResponse.then(function(){return update;}).catch(function(){}));
+  /* waitUntil se registra durante el evento y mantiene el worker vivo hasta
+     que termine la escritura, sin retrasar la respuesta. */
+  ev.waitUntil(responsePromise.then(function(){return cacheWrite;}).catch(function(){}));
+  ev.respondWith(responsePromise);
 });
 
 self.addEventListener('message',function(ev){
-  if(ev.data==='SKIP_WAITING')self.skipWaiting();
+  var data=ev.data;
+  if(data==='SKIP_WAITING'){self.skipWaiting();return;}
+  if(data&&data.type==='VERSION'&&ev.ports&&ev.ports[0]){
+    ev.ports[0].postMessage({version:VERSION});
+  }
 });
 })();

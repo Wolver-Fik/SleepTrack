@@ -826,16 +826,41 @@ function bind(){
 }
 
 /* ---------- Service worker ---------- */
+/* Misma versión que sw.js (CACHE). La query rompe la caché HTTP del script y
+   obliga al teléfono a instalar el worker nuevo en la subruta correcta. */
+var SW_VERSION='sleeptrack-v1.4.0';
 function registerSW(){
   if(!('serviceWorker' in navigator))return;
   if(!/^https?:$/.test(location.protocol))return;
-  var refreshing=false;
+  var swUrl='./sw.js?v='+encodeURIComponent(SW_VERSION);
+  var target=new URL(swUrl,location.href).href;
+  var scope=new URL('./',location.href).href;
+  var reloading=false;
+
   navigator.serviceWorker.addEventListener('controllerchange',function(){
-    if(refreshing)return;
-    refreshing=true;window.location.reload();
+    if(reloading)return;
+    reloading=true;window.location.reload();
   });
+
   window.addEventListener('load',function(){
-    navigator.serviceWorker.register('./sw.js').catch(function(){});
+    /* Retira solo registros de ESTA subruta que apunten a otro script (p. ej.
+       un './sw.js' sin versionar). Nunca toca los workers de las apps hermanas,
+       que comparten origen pero tienen su propia subruta. */
+    navigator.serviceWorker.getRegistrations().then(function(regs){
+      var stale=regs.filter(function(reg){
+        if(reg.scope!==scope)return false;
+        var u=(reg.active&&reg.active.scriptURL)||(reg.waiting&&reg.waiting.scriptURL)||
+              (reg.installing&&reg.installing.scriptURL)||'';
+        return !!u&&u!==target&&/\/sw\.js(?:\?|$)/.test(u);
+      });
+      return Promise.all(stale.map(function(reg){return reg.unregister().catch(function(){});}));
+    }).catch(function(){}).then(function(){
+      /* updateViaCache:'none' evita que el navegador reutilice un sw.js viejo
+         servido desde la caché HTTP de GitHub Pages. */
+      return navigator.serviceWorker.register(swUrl,{scope:'./',updateViaCache:'none'});
+    }).then(function(reg){
+      return reg.update().catch(function(){});
+    }).catch(function(){});
   });
 }
 
@@ -859,8 +884,10 @@ function init(){
   initForm();
   setTab('record');
   render();
-  registerSW();
 }
+/* El SW se registra aunque falle la migración de almacenamiento: si init() no
+   llega a ejecutarse, la PWA seguiría sin caché offline. */
+registerSW();
 /* IndexedDB es la fuente de verdad: init() espera a la migración inicial
    (solo si la base estaba vacía) antes de leer el estado. */
 if(S.whenReady)S.whenReady().then(init,init);
