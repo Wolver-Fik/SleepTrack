@@ -270,7 +270,8 @@ function csvCell(v){
   return /[",\r\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
 }
 function backupPayload(){
-  return {app:'sleeptrack',schemaVersion:SCHEMA_VERSION,v:1,exportedAt:new Date().toISOString(),
+  return {app:'sleeptrack',appId:'sleeptrack',schemaVersion:SCHEMA_VERSION,v:1,
+    exportDate:new Date().toISOString().slice(0,10),exportedAt:new Date().toISOString(),
     goal:state.goal,custom:state.custom,entries:state.entries};
 }
 function exportJSON(){
@@ -281,6 +282,7 @@ function exportJSON(){
 function validateBackup(o){
   if(!o||typeof o!=='object'||Array.isArray(o))return {ok:false,msgText:'El archivo no contiene un respaldo válido.'};
   if(o.app&&String(o.app).toLowerCase()!=='sleeptrack')return {ok:false,msgText:'Este respaldo pertenece a otra aplicación y no se importará.'};
+  if(o.appId&&String(o.appId).toLowerCase()!=='sleeptrack')return {ok:false,msgText:'Este respaldo pertenece a otra aplicación y no se importará.'};
   var sv=o.schemaVersion==null?1:Number(o.schemaVersion);
   if(!isFinite(sv)||sv<1||sv>SCHEMA_VERSION)return {ok:false,msgText:'La versión de esquema del respaldo no es compatible.'};
   if(!o.entries||typeof o.entries!=='object'||Array.isArray(o.entries))return {ok:false,msgText:'El respaldo no tiene registros válidos.'};

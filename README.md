@@ -21,6 +21,8 @@ A private, offline-first sleep log that runs entirely in your browser. No accoun
 - **Quick notes on waking** — capture a short thought the moment you wake up without opening the full log form.
 - **Monthly & yearly comparison** — compare averages and trends across months and years to see long-term change.
 - **History** — full list with edit/delete, incremental paging, JSON/CSV backup and import, and local storage status.
+- **Energy, caffeine & screens** — log morning energy, caffeine time and screen minutes per night; JSON backups include `schemaVersion`, `appId`, the export date and these fields, and imports reject other apps' backups without erasing nights.
+- **60fps history** — charts are limited to the selected 7/14/30/90-day range and the history shows 20 nights with a "show more" pager.
 - **8 languages**: English, Español, Português, Français, Italiano, Deutsch, Русский and 日本語. Automatic detection from `navigator.language`, persisted choice and a language switch in the header. All interface text, KPI labels, chart legends, day/month names, pattern sentences and backup messages are translated.
 - **Installable PWA** — web manifest, relative paths for GitHub Pages project sites, standalone display, Network-First service worker for HTML, offline caching for assets and automatic reload when a new version takes control.
 - **iOS/Android ready** — `viewport-fit=cover`, safe-area insets on the header, body and dialogs, `100dvh` layout, real PNG icons (180/192/512) plus an SVG source.
@@ -51,6 +53,8 @@ Un diario de sueño privado, que funciona sin conexión y corre completamente en
 - **Notas rápidas al despertar** — guarda una idea breve justo al despertar sin abrir el formulario completo.
 - **Comparación mensual y anual** — contrasta promedios y tendencias entre meses y años para ver los cambios a largo plazo.
 - **Historial** — lista completa con edición y borrado, paginación incremental, copia de seguridad JSON/CSV, importación y estado del almacenamiento local.
+- **Energía, cafeína y pantallas** — anota la energía al despertar, la hora de cafeína y los minutos de pantalla por noche; el JSON incluye `schemaVersion`, `appId`, la fecha de exportación y estos campos, y la importación rechaza copias de otra app sin borrar tus noches.
+- **Historial a 60 fps** — los gráficos se limitan al rango elegido (7/14/30/90 días) y el historial muestra 20 noches con paginador «Ver más».
 - **8 idiomas**: English, Español, Português, Français, Italiano, Deutsch, Русский y 日本語. Detección automática desde `navigator.language`, elección persistida y selector en la cabecera. Están traducidas todas las etiquetas, KPI, leyendas de gráficos, días y meses, frases de patrones y mensajes de copia de seguridad.
 - **PWA instalable** — manifiesto web, rutas relativas para proyectos de GitHub Pages, modo standalone, service worker Network-First para HTML, caché offline de recursos y recarga automática al activarse una versión nueva.
 - **Preparada para iOS/Android** — `viewport-fit=cover`, zonas seguras en cabecera, cuerpo y diálogos, diseño con `100dvh` e iconos PNG reales (180/192/512) con su SVG de origen.
