@@ -38,6 +38,23 @@ var STATE_KEY='main';
 var dbPromise=null,idbReady=false,idbFailed=false,pendingWrite=false,localHadData=false;
 var initPromise=null,writeChain=Promise.resolve(),memoryBackup=null;
 
+/* IndexedDB es la única fuente de verdad; `state` es la copia en memoria que
+   usa la API síncrona. Los fallos reales se notifican con `onStorageError`. */
+var STORAGE_ERROR_MESSAGE='Error al guardar los datos en este dispositivo. Exporta un respaldo JSON por seguridad.';
+var storageErrorHandler=null,lastStorageError=null,storageErrorActive=false;
+function emitStorageError(err,origin){
+  if(storageErrorActive)return;
+  storageErrorActive=true;
+  lastStorageError={message:STORAGE_ERROR_MESSAGE,error:err||null,origin:origin||''};
+  try{if(typeof storageErrorHandler==='function')storageErrorHandler(lastStorageError)}catch(e){}
+  try{window.dispatchEvent(new CustomEvent('onStorageError',{detail:lastStorageError}))}
+  catch(e){
+    try{var ev=document.createEvent('CustomEvent');ev.initCustomEvent('onStorageError',false,false,lastStorageError);window.dispatchEvent(ev)}catch(e2){}
+  }
+}
+function clearStorageError(){storageErrorActive=false;lastStorageError=null;}
+function persistStatus(){return !lastStorageError&&!idbFailed;}
+
 function idbOpen(){
   if(dbPromise)return dbPromise;
   dbPromise=new Promise(function(resolve,reject){
@@ -79,20 +96,27 @@ function idbPut(store,key,value){
 function idbDelete(store,key){
   return idbOpen().then(function(db){return idbRequest(db,store,'readwrite',function(os){return os.delete(key);});});
 }
+/* Solo una bandera ligera: los registros completos viven en IndexedDB. */
 function localSnapshot(){
   var snap={};
-  try{[KEY,DEMO_OFF_KEY].forEach(function(k){var v=localStorage.getItem(k);if(v!==null)snap[k]=v;});}catch(e){}
+  try{var v=localStorage.getItem(DEMO_OFF_KEY);if(v!==null)snap[DEMO_OFF_KEY]=v;}catch(e){}
   return snap;
 }
+function pruneLocalState(){try{localStorage.removeItem(KEY)}catch(e){}}
 function stateData(){return {goal:state.goal,custom:state.custom,entries:state.entries};}
 function envelope(data){
   return {schemaVersion:SCHEMA_VERSION,app:'sleeptrack',v:1,data:data,localStorage:localSnapshot(),updatedAt:new Date().toISOString()};
 }
 function writeIDB(data){
-  writeChain=writeChain.then(function(){
+  var attempt=writeChain.then(function(){
     return idbPut(STORE_STATE,STATE_KEY,envelope(data));
-  }).catch(function(){idbFailed=true;});
-  return writeChain;
+  });
+  writeChain=attempt.catch(function(){});
+  return attempt.then(function(){
+    clearStorageError();storageOK=true;
+  },function(e){
+    idbFailed=true;storageOK=false;emitStorageError(e,'IndexedDB');
+  });
 }
 function applyData(d){
   var c=sanitize(d),changed=false;
@@ -122,20 +146,20 @@ function initIDB(){
   initPromise=idbOpen().then(function(){
     return idbGet(STORE_STATE,STATE_KEY);
   }).then(function(rec){
-    var local=stateData(),merged=local;
     if(rec){
+      /* IndexedDB manda: localStorage no se fusiona una vez ya migró. */
       var remote=(rec.schemaVersion&&rec.data)?rec.data:rec;
-      merged=mergeData(localHadData?local:null,remote,localHadData||pendingWrite);
-      var changed=applyData(merged);
-      persist();
+      var changed=applyData(remote);
+      pruneLocalState();
       notifyReady(changed);
-    }else{
-      // First run: migrate every localStorage record into IndexedDB.
-      writeIDB(local);
-      notifyReady(false);
+      return;
     }
-  }).catch(function(){
-    idbFailed=true;
+    /* Primer arranque: migra una sola vez desde localStorage y limpia la
+       clave pesada en cuanto IndexedDB tiene el estado. */
+    writeIDB(stateData()).then(function(){pruneLocalState();});
+    notifyReady(false);
+  }).catch(function(e){
+    idbFailed=true;storageOK=false;emitStorageError(e,'IndexedDB (init)');
     notifyReady(false);
   });
   return initPromise;
@@ -190,24 +214,26 @@ function sanitize(o){
   return out;
 }
 function load(){
-  try{
-    var raw=localStorage.getItem(KEY);
-    if(raw){localHadData=true;var parsed=JSON.parse(raw),c=sanitize(parsed&&parsed.data?parsed.data:parsed);state.entries=c.entries;state.goal=c.goal;state.custom=c.custom;}
-  }catch(e){}
+  /* Solo se consulta localStorage mientras IndexedDB aún no ha migrado. */
+  if(!initPromise){
+    try{
+      var raw=localStorage.getItem(KEY);
+      if(raw){localHadData=true;var parsed=JSON.parse(raw),c=sanitize(parsed&&parsed.data?parsed.data:parsed);state.entries=c.entries;state.goal=c.goal;state.custom=c.custom;}
+    }catch(e){}
+  }
   try{demoOff=localStorage.getItem(DEMO_OFF_KEY)==='1';}catch(e){}
-  try{localStorage.setItem(KEY+'-t','1');localStorage.removeItem(KEY+'-t');storageOK=true;}catch(e){storageOK=false;}
-  /* Migracion automatica: localStorage -> IndexedDB, sin perder registros. */
+  storageOK=persistStatus();
+  /* Migracion automatica: localStorage -> IndexedDB, una sola vez. */
   initIDB();
 }
 function persist(){
-  var payload={v:1,schemaVersion:SCHEMA_VERSION,app:'sleeptrack',goal:state.goal,custom:state.custom,entries:state.entries};
-  try{localStorage.setItem(KEY,JSON.stringify(payload));storageOK=true;}
-  catch(e){storageOK=false;}
   pendingWrite=true;
-  writeIDB({goal:state.goal,custom:state.custom,entries:state.entries});
+  /* La escritura principal es IndexedDB: no depende de la cuota de localStorage. */
+  writeIDB(stateData());
 }
 function persistDemoOff(){
-  try{localStorage.setItem(DEMO_OFF_KEY,'1');}catch(e){storageOK=false;}
+  /* Bandera ligera; un fallo aquí no invalida el guardado en IndexedDB. */
+  try{localStorage.setItem(DEMO_OFF_KEY,'1');}catch(e){}
 }
 
 /* ---------- Modo demo ---------- */
@@ -333,6 +359,10 @@ function importJSON(text){
 }
 function wipe(){state.entries={};state.custom=[];persist();}
 
+/* Precarga síncrona: solo alimenta la migración inicial a IndexedDB; la
+   fuente de verdad sigue siendo el registro de IndexedDB. */
+load();
+
 window.SleepStorage={
   BASE:BASE,
   factorLabel:factorLabel,
@@ -359,6 +389,12 @@ window.SleepStorage={
   SCHEMA_VERSION:SCHEMA_VERSION,
   whenReady:whenReady,
   isIndexedDBReady:function(){return idbReady&&!idbFailed;},
+  /* Fallo real de persistencia: callback y evento `onStorageError`. */
+  STORAGE_ERROR_MESSAGE:STORAGE_ERROR_MESSAGE,
+  get onStorageError(){return storageErrorHandler},
+  set onStorageError(fn){storageErrorHandler=typeof fn==='function'?fn:null},
+  lastStorageError:function(){return lastStorageError},
+  isStorageHealthy:persistStatus,
   putFile:putFile,
   getFile:getFile,
   listFiles:listFiles,

@@ -5,6 +5,22 @@
 
 var S=window.SleepStorage,I=window.SleepI18n;
 if(!S||!I)return;
+/* Fallo real de guardado: storage.js emite `onStorageError` cuando fallan
+   IndexedDB y el almacenamiento alternativo. El aviso es persistente. */
+(function(){
+  var TEXT='Error al guardar los datos en este dispositivo. Exporta un respaldo JSON por seguridad.';
+  function showStorageError(ev){
+    var el=document.getElementById('storageErrorBanner');
+    if(!el){
+      el=document.createElement('div');el.id='storageErrorBanner';el.setAttribute('role','alert');
+      el.style.cssText='position:fixed;left:50%;top:8px;transform:translateX(-50%);max-width:min(92vw,680px);z-index:2147483647;background:#8b1e1e;color:#fff;padding:12px 16px;border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.35);font:600 14px/1.4 system-ui,sans-serif;text-align:center';
+      (document.body||document.documentElement).appendChild(el);
+    }
+    el.textContent=(ev&&ev.detail&&ev.detail.message)||TEXT;
+  }
+  window.addEventListener('onStorageError',showStorageError);
+  if(S.lastStorageError&&S.lastStorageError())showStorageError({detail:S.lastStorageError()});
+})();
 function L(k,v){return I.t(k,v);}
 function C(k,n){return I.count(k,n);}
 function WD_LONG(){return I.get('weekday.long');}
@@ -821,7 +837,6 @@ function init(){
   window.addEventListener('sleeptrack:storage-ready',function(ev){
     if(ev&&ev.detail&&ev.detail.changed){renderToday();render();}
   });
-  if(S.whenReady)S.whenReady().catch(function(){});
   I.init();
   renderToday();
   I.onChange(function(){
@@ -837,5 +852,8 @@ function init(){
   render();
   registerSW();
 }
-init();
+/* IndexedDB es la fuente de verdad: init() espera a la migración inicial
+   (solo si la base estaba vacía) antes de leer el estado. */
+if(S.whenReady)S.whenReady().then(init,init);
+else init();
 })();
