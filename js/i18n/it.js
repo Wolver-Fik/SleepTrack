@@ -2,6 +2,13 @@
 (function(){
 'use strict';
 window.SleepI18n.register('it',{
+  'install.button': 'Installa app',
+  'install.guideTitle': 'Installa su iPhone o iPad',
+  'install.step1': 'Tocca l’icona Condividi nella barra di Safari',
+  'install.step2': 'Scegli «Aggiungi a Home»',
+  'install.close': 'Chiudi',
+  'install.buttonAria': 'Installa l’app su questo dispositivo',
+  'install.closeAria': 'Chiudi la guida all’installazione',
   'meta.title':'SleepTrack — Diario del sonno',
   'header.subtitle':'REGISTRO · PATTERNS · RIPOSO',
   'header.goal':'Obiettivo',

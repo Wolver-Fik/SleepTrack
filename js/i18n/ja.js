@@ -2,6 +2,13 @@
 (function(){
 'use strict';
 window.SleepI18n.register('ja',{
+  'install.button': 'アプリをインストール',
+  'install.guideTitle': 'iPhone または iPad にインストール',
+  'install.step1': 'Safari のツールバーで「共有」アイコンをタップ',
+  'install.step2': '「ホーム画面に追加」を選択',
+  'install.close': '閉じる',
+  'install.buttonAria': 'このデバイスにアプリをインストール',
+  'install.closeAria': 'インストールガイドを閉じる',
   'meta.title':'SleepTrack — 睡眠記録',
   'header.subtitle':'記録 · パターン · 休息',
   'header.goal':'目標',

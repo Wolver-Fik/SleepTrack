@@ -2,6 +2,13 @@
 (function(){
 'use strict';
 window.SleepI18n.register('ru',{
+  'install.button': 'Установить приложение',
+  'install.guideTitle': 'Установка на iPhone или iPad',
+  'install.step1': 'Нажмите значок «Поделиться» на панели Safari',
+  'install.step2': 'Выберите «На главный экран»',
+  'install.close': 'Закрыть',
+  'install.buttonAria': 'Установить приложение на этом устройстве',
+  'install.closeAria': 'Закрыть руководство по установке',
   'meta.title':'SleepTrack — Дневник сна',
   'header.subtitle':'ЗАПИСИ · ЗАКОНОМЕРНОСТИ · ОТДЫХ',
   'header.goal':'Цель',
